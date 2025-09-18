@@ -153,19 +153,24 @@ export const DashboardPage: React.FC = () => {
       websocketService.requestUserList();
     };
 
-    websocketService.on('connection_status', handleConnectionStatus);
-    websocketService.on('user_list', handleUserList);
-    websocketService.on('user_joined', handleUserJoined);
-    websocketService.on('user_left', handleUserLeft);
+    const connectionStatusWrapper = (data: unknown) => handleConnectionStatus(data as ConnectionStatusData);
+    const userListWrapper = (data: unknown) => handleUserList(data as UserListData);
+    const userJoinedWrapper = (_data: unknown) => handleUserJoined();
+    const userLeftWrapper = (_data: unknown) => handleUserLeft();
+
+    websocketService.on('connection_status', connectionStatusWrapper);
+    websocketService.on('user_list', userListWrapper);
+    websocketService.on('user_joined', userJoinedWrapper);
+    websocketService.on('user_left', userLeftWrapper);
 
     // Set initial connection state
     setConnected(websocketService.isConnected);
 
     return () => {
-      websocketService.off('connection_status', handleConnectionStatus);
-      websocketService.off('user_list', handleUserList);
-      websocketService.off('user_joined', handleUserJoined);
-      websocketService.off('user_left', handleUserLeft);
+      websocketService.off('connection_status', connectionStatusWrapper);
+      websocketService.off('user_list', userListWrapper);
+      websocketService.off('user_joined', userJoinedWrapper);
+      websocketService.off('user_left', userLeftWrapper);
     };
   }, []);
 

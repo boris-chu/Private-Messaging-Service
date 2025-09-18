@@ -66,6 +66,18 @@ class MessageService {
   private encryptionState: EncryptionState = 'no-encryption';
   private encryptedUsers: Set<string> = new Set();
 
+  // Store wrapper functions for proper cleanup
+  private messageWrapper = (data: unknown) => this.handleMessage(data as MessageData);
+  private encryptedMessageWrapper = (data: unknown) => this.handleEncryptedMessage(data as MessageData);
+  private messageDeliveredWrapper = (data: unknown) => this.handleMessageDelivered(data as MessageData);
+  private messageReadWrapper = (data: unknown) => this.handleMessageRead(data as MessageData);
+  private userJoinedWrapper = (data: unknown) => this.handleUserJoined(data as UserData);
+  private userLeftWrapper = (data: unknown) => this.handleUserLeft(data as UserData);
+  private userListWrapper = (data: unknown) => this.handleUserList(data as UserData);
+  private connectionStatusWrapper = (data: unknown) => this.handleConnectionStatus(data as ConnectionStatusData);
+  private publicKeyReceivedWrapper = (data: unknown) => this.handlePublicKeyReceived(data as PublicKeyData);
+  private publicKeyRequestedWrapper = (data: unknown) => this.handlePublicKeyRequested(data as UserData);
+
   async initialize(config: MessageServiceConfig) {
     this.config = config;
     this.currentUser = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}').username;
@@ -73,17 +85,17 @@ class MessageService {
     // Initialize encryption
     await this.initializeEncryption();
 
-    // Set up WebSocket listeners
-    websocketService.on('message', this.handleMessage);
-    websocketService.on('encrypted_message', this.handleEncryptedMessage);
-    websocketService.on('message_delivered', this.handleMessageDelivered);
-    websocketService.on('message_read', this.handleMessageRead);
-    websocketService.on('user_joined', this.handleUserJoined);
-    websocketService.on('user_left', this.handleUserLeft);
-    websocketService.on('user_list', this.handleUserList);
-    websocketService.on('connection_status', this.handleConnectionStatus);
-    websocketService.on('public_key_received', this.handlePublicKeyReceived);
-    websocketService.on('public_key_requested', this.handlePublicKeyRequested);
+    // Set up WebSocket listeners with type-safe wrappers
+    websocketService.on('message', this.messageWrapper);
+    websocketService.on('encrypted_message', this.encryptedMessageWrapper);
+    websocketService.on('message_delivered', this.messageDeliveredWrapper);
+    websocketService.on('message_read', this.messageReadWrapper);
+    websocketService.on('user_joined', this.userJoinedWrapper);
+    websocketService.on('user_left', this.userLeftWrapper);
+    websocketService.on('user_list', this.userListWrapper);
+    websocketService.on('connection_status', this.connectionStatusWrapper);
+    websocketService.on('public_key_received', this.publicKeyReceivedWrapper);
+    websocketService.on('public_key_requested', this.publicKeyRequestedWrapper);
   }
 
   private async initializeEncryption() {
@@ -115,16 +127,16 @@ class MessageService {
   }
 
   cleanup() {
-    websocketService.off('message', this.handleMessage);
-    websocketService.off('encrypted_message', this.handleEncryptedMessage);
-    websocketService.off('message_delivered', this.handleMessageDelivered);
-    websocketService.off('message_read', this.handleMessageRead);
-    websocketService.off('user_joined', this.handleUserJoined);
-    websocketService.off('user_left', this.handleUserLeft);
-    websocketService.off('user_list', this.handleUserList);
-    websocketService.off('connection_status', this.handleConnectionStatus);
-    websocketService.off('public_key_received', this.handlePublicKeyReceived);
-    websocketService.off('public_key_requested', this.handlePublicKeyRequested);
+    websocketService.off('message', this.messageWrapper);
+    websocketService.off('encrypted_message', this.encryptedMessageWrapper);
+    websocketService.off('message_delivered', this.messageDeliveredWrapper);
+    websocketService.off('message_read', this.messageReadWrapper);
+    websocketService.off('user_joined', this.userJoinedWrapper);
+    websocketService.off('user_left', this.userLeftWrapper);
+    websocketService.off('user_list', this.userListWrapper);
+    websocketService.off('connection_status', this.connectionStatusWrapper);
+    websocketService.off('public_key_received', this.publicKeyReceivedWrapper);
+    websocketService.off('public_key_requested', this.publicKeyRequestedWrapper);
 
     cryptoService.clearKeys();
     this.encryptedUsers.clear();
