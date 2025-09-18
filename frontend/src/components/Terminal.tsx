@@ -403,11 +403,11 @@ export const Terminal: React.FC<TerminalProps> = ({
     terminal.resize(terminalSize.cols, terminalSize.rows);
 
     // Force scroll to bottom after any output
-    const originalWriteln = terminal.writeln;
-    terminal.writeln = function(data?: string) {
-      originalWriteln.call(this, data);
+    const originalWriteln = terminal.writeln.bind(terminal);
+    terminal.writeln = function(data: string | Uint8Array = '') {
+      originalWriteln(data);
       setTimeout(() => {
-        this.scrollToBottom();
+        terminal.scrollToBottom();
       }, 0);
     };
 
