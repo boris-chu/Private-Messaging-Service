@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { Terminal } from '../components/Terminal';
+import { websocketService } from '../services/websocketService';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -57,12 +58,28 @@ export const DashboardPage: React.FC = () => {
 
   const handleConnect = () => {
     console.log('Connecting to WebSocket...');
-    setConnected(true);
+    setConnected(websocketService.isConnected);
   };
 
   const handleCommand = (command: string) => {
     console.log('Command executed:', command);
   };
+
+  // Listen for WebSocket connection changes
+  useEffect(() => {
+    const handleConnectionStatus = (data: any) => {
+      setConnected(data.status === 'connected');
+    };
+
+    websocketService.on('connection_status', handleConnectionStatus);
+
+    // Set initial connection state
+    setConnected(websocketService.isConnected);
+
+    return () => {
+      websocketService.off('connection_status', handleConnectionStatus);
+    };
+  }, []);
 
   if (!user) {
     return null;

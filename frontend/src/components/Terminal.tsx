@@ -9,6 +9,7 @@ import {
   Refresh
 } from '@mui/icons-material';
 import '@xterm/xterm/css/xterm.css';
+import { websocketService } from '../services/websocketService';
 
 interface TerminalProps {
   onCommand?: (command: string) => void;
@@ -25,6 +26,7 @@ export const Terminal: React.FC<TerminalProps> = ({
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -99,6 +101,8 @@ export const Terminal: React.FC<TerminalProps> = ({
 
     // Handle user input
     let inputBuffer = '';
+    let inputMode = 'command'; // 'command' or 'message'
+    let messageRecipient = '';
 
     terminal.onData((data) => {
       const char = data.charCodeAt(0);
@@ -106,7 +110,15 @@ export const Terminal: React.FC<TerminalProps> = ({
       if (char === 13) { // Enter
         terminal.writeln('');
         if (inputBuffer.trim()) {
-          handleCommand(inputBuffer.trim());
+          if (inputMode === 'message' && messageRecipient) {
+            // Send message via WebSocket
+            websocketService.sendMessage(inputBuffer.trim(), messageRecipient);
+            terminal.writeln(`\x1b[32m[TO ${messageRecipient}]\x1b[0m ${inputBuffer.trim()}`);
+            messageRecipient = '';
+            inputMode = 'command';
+          } else {
+            handleCommand(inputBuffer.trim());
+          }
         }
         inputBuffer = '';
         showPrompt();
@@ -144,27 +156,41 @@ export const Terminal: React.FC<TerminalProps> = ({
           break;
 
         case 'connect':
-          if (!connected) {
+          if (!websocketService.isConnected) {
             terminal.writeln('\x1b[33mEstablishing secure connection...\x1b[0m');
-            onConnect?.();
+            websocketService.connect()
+              .then(() => {
+                terminal.writeln('\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection established');
+                websocketService.requestUserList();
+                onConnect?.();
+              })
+              .catch((error) => {
+                terminal.writeln(`\x1b[31m[ERROR]\x1b[0m Failed to connect: ${error.message}`);
+              });
           } else {
             terminal.writeln('\x1b[33mAlready connected to server\x1b[0m');
           }
           break;
 
         case 'disconnect':
-          if (connected) {
+          if (websocketService.isConnected) {
             terminal.writeln('\x1b[33mDisconnecting from server...\x1b[0m');
+            websocketService.disconnect();
+            terminal.writeln('\x1b[31m[DISCONNECTED]\x1b[0m Connection closed');
           } else {
             terminal.writeln('\x1b[31mNot connected to server\x1b[0m');
           }
           break;
 
         case 'status':
-          const statusText = connected ?
+          const wsStatus = websocketService.isConnected;
+          const statusText = wsStatus ?
             '\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection active' :
             '\x1b[31m[DISCONNECTED]\x1b[0m No active connection';
           terminal.writeln(statusText);
+          if (wsStatus) {
+            terminal.writeln(`\x1b[90mOnline users: ${onlineUsers.length}\x1b[0m`);
+          }
           break;
 
         case 'clear':
@@ -172,16 +198,38 @@ export const Terminal: React.FC<TerminalProps> = ({
           break;
 
         case 'users':
-          terminal.writeln('\x1b[33mOnline Users:\x1b[0m');
-          terminal.writeln('  \x1b[36mdemo\x1b[0m - Demo User (online)');
+          if (websocketService.isConnected) {
+            terminal.writeln('\x1b[33mOnline Users:\x1b[0m');
+            if (onlineUsers.length > 0) {
+              onlineUsers.forEach(user => {
+                terminal.writeln(`  \x1b[36m${user}\x1b[0m - Online`);
+              });
+            } else {
+              terminal.writeln('  \x1b[90mNo other users online\x1b[0m');
+            }
+            websocketService.requestUserList();
+          } else {
+            terminal.writeln('\x1b[31mNot connected to server\x1b[0m');
+          }
           break;
 
         default:
           if (cmd.startsWith('msg ')) {
-            const user = cmd.substring(4);
+            const user = cmd.substring(4).trim();
             if (user) {
-              terminal.writeln(`\x1b[33mSending message to \x1b[36m${user}\x1b[0m...`);
-              terminal.writeln('\x1b[90mType your message and press Enter:\x1b[0m');
+              if (websocketService.isConnected) {
+                if (onlineUsers.includes(user)) {
+                  terminal.writeln(`\x1b[33mSending message to \x1b[36m${user}\x1b[0m...`);
+                  terminal.writeln('\x1b[90mType your message and press Enter:\x1b[0m');
+                  messageRecipient = user;
+                  inputMode = 'message';
+                } else {
+                  terminal.writeln(`\x1b[31mUser '${user}' is not online\x1b[0m`);
+                  terminal.writeln('Use \x1b[32musers\x1b[0m to see who is online');
+                }
+              } else {
+                terminal.writeln('\x1b[31mNot connected to server\x1b[0m');
+              }
             } else {
               terminal.writeln('\x1b[31mUsage: msg <username>\x1b[0m');
             }
@@ -201,6 +249,52 @@ export const Terminal: React.FC<TerminalProps> = ({
       }
     };
 
+    // WebSocket event listeners
+    const handleMessage = (data: any) => {
+      const timestamp = new Date(data.timestamp).toLocaleTimeString();
+      terminal.writeln(`\x1b[34m[${timestamp}]\x1b[0m \x1b[36m${data.sender}\x1b[0m: ${data.content}`);
+      showPrompt();
+    };
+
+    const handleUserJoined = (data: any) => {
+      terminal.writeln(`\x1b[32m[SYSTEM]\x1b[0m User \x1b[36m${data.user}\x1b[0m joined the chat`);
+      setOnlineUsers(prev => [...prev.filter(u => u !== data.user), data.user]);
+      showPrompt();
+    };
+
+    const handleUserLeft = (data: any) => {
+      terminal.writeln(`\x1b[33m[SYSTEM]\x1b[0m User \x1b[36m${data.user}\x1b[0m left the chat`);
+      setOnlineUsers(prev => prev.filter(u => u !== data.user));
+      showPrompt();
+    };
+
+    const handleUserList = (data: any) => {
+      setOnlineUsers(data.users || []);
+    };
+
+    const handleConnectionStatus = (data: any) => {
+      if (data.status === 'connected') {
+        terminal.writeln('\x1b[32m[SYSTEM]\x1b[0m WebSocket connection established');
+      } else if (data.status === 'disconnected') {
+        terminal.writeln('\x1b[31m[SYSTEM]\x1b[0m WebSocket connection lost');
+        setOnlineUsers([]);
+      }
+      showPrompt();
+    };
+
+    const handleError = (data: any) => {
+      terminal.writeln(`\x1b[31m[ERROR]\x1b[0m ${data.error}`);
+      showPrompt();
+    };
+
+    // Register WebSocket event listeners
+    websocketService.on('message', handleMessage);
+    websocketService.on('user_joined', handleUserJoined);
+    websocketService.on('user_left', handleUserLeft);
+    websocketService.on('user_list', handleUserList);
+    websocketService.on('connection_status', handleConnectionStatus);
+    websocketService.on('error', handleError);
+
     // Initial fit
     setTimeout(() => handleResize(), 100);
 
@@ -208,6 +302,14 @@ export const Terminal: React.FC<TerminalProps> = ({
     window.addEventListener('resize', handleResize);
 
     return () => {
+      // Clean up WebSocket event listeners
+      websocketService.off('message', handleMessage);
+      websocketService.off('user_joined', handleUserJoined);
+      websocketService.off('user_left', handleUserLeft);
+      websocketService.off('user_list', handleUserList);
+      websocketService.off('connection_status', handleConnectionStatus);
+      websocketService.off('error', handleError);
+
       window.removeEventListener('resize', handleResize);
       terminal.dispose();
     };
