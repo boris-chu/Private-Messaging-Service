@@ -368,30 +368,14 @@ export const Terminal: React.FC<TerminalProps> = ({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box
             sx={{
-              width: 12,
-              height: 12,
+              width: 10,
+              height: 10,
               borderRadius: '50%',
-              bgcolor: '#ff5f57'
+              bgcolor: connected ? '#28ca42' : '#ff5f57'
             }}
           />
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              bgcolor: '#ffbd2e'
-            }}
-          />
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              bgcolor: '#28ca42'
-            }}
-          />
-          <Box sx={{ ml: 2, fontSize: '13px', color: '#8b949e' }}>
-            SecureMsg Terminal
+          <Box sx={{ ml: 1, fontSize: '13px', color: '#8b949e' }}>
+            {connected ? 'Connected' : 'Disconnected'}
           </Box>
         </Box>
 

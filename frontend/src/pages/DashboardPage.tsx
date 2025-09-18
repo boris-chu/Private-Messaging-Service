@@ -167,7 +167,7 @@ export const DashboardPage: React.FC = () => {
           <Box>
 
             {/* Stats Cards */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3, mb: 4 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr' }, gap: 3, mb: 4 }}>
               <Card elevation={2}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -176,45 +176,6 @@ export const DashboardPage: React.FC = () => {
                       <Typography variant="h6">Online Users</Typography>
                       <Typography variant="h4" sx={{ fontWeight: 600 }}>
                         {connected ? onlineUserCount : '0'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-
-              <Card elevation={2}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: '50%',
-                        bgcolor: connected ? '#28ca42' : '#ff5f57',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: '50%',
-                          bgcolor: 'white'
-                        }}
-                      />
-                    </Box>
-                    <Box>
-                      <Typography variant="h6">Connection Status</Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 600,
-                          color: connected ? '#28ca42' : '#ff5f57'
-                        }}
-                      >
-                        {connected ? 'Connected' : 'Disconnected'}
                       </Typography>
                     </Box>
                   </Box>
@@ -231,10 +192,6 @@ export const DashboardPage: React.FC = () => {
                 borderRadius: 2
               }}
             >
-              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Security sx={{ color: '#00d4aa' }} />
-                Secure Terminal
-              </Typography>
               <Terminal
                 connected={connected}
                 onConnect={handleConnect}
