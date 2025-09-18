@@ -42,6 +42,17 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
       script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
       script.async = true;
       script.defer = true;
+      script.crossOrigin = 'anonymous';
+
+      // Add error handling for script loading
+      script.onload = () => {
+        console.log('Turnstile script loaded successfully');
+      };
+
+      script.onerror = (error) => {
+        console.error('Failed to load Turnstile script:', error);
+      };
+
       document.head.appendChild(script);
       scriptLoadedRef.current = true;
     }
@@ -59,15 +70,23 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
             callback: onVerify,
             theme,
             size,
-            'error-callback': () => {
-              console.error('Turnstile error');
+            'error-callback': (error: string) => {
+              console.error('Turnstile verification error:', error);
             },
             'expired-callback': () => {
-              console.warn('Turnstile token expired');
+              console.warn('Turnstile token expired - user needs to verify again');
+            },
+            'timeout-callback': () => {
+              console.warn('Turnstile verification timed out');
             }
           });
         } catch (error) {
           console.error('Failed to render Turnstile widget:', error);
+          // Fallback: allow verification to proceed without Turnstile in development
+          if (import.meta.env.DEV) {
+            console.warn('Development mode: bypassing Turnstile verification');
+            setTimeout(() => onVerify('dev-bypass-token'), 1000);
+          }
         }
       } else {
         // Retry after a short delay

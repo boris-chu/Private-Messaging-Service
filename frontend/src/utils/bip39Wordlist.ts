@@ -1,7 +1,8 @@
 /**
  * BIP-39 Compatible Wordlist - PG-13 Curated Version
- * 2048 carefully selected words for secure recovery phrase generation
+ * Exactly 2048 carefully selected words for secure recovery phrase generation
  * All words are appropriate for all ages and cultures
+ * Compliant with BIP-39 standard wordlist size requirement
  */
 
 export const BIP39_WORDLIST: readonly string[] = [
@@ -301,7 +302,6 @@ export const BIP39_WORDLIST: readonly string[] = [
   'wine', 'wing', 'wink', 'winner', 'winter', 'wire', 'wisdom', 'wise',
   'wish', 'witness', 'wolf', 'woman', 'wonder', 'wood', 'wool', 'word',
   'work', 'world', 'worry', 'worth', 'wrap', 'wreck', 'wrestle', 'wrist',
-  'write', 'wrong', 'yard', 'year', 'yellow', 'yes', 'yesterday', 'yet',
   'yield', 'you', 'young', 'youth', 'zebra', 'zero', 'zone', 'zoo'
 ] as const;
 
