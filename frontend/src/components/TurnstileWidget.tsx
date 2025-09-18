@@ -1,8 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 
+interface TurnstileAPI {
+  render: (container: string | HTMLElement, options: {
+    sitekey: string;
+    callback?: (token: string) => void;
+    'error-callback'?: () => void;
+    theme?: string;
+  }) => string;
+  remove: (widgetId: string) => void;
+}
+
 declare global {
   interface Window {
-    turnstile: any;
+    turnstile: TurnstileAPI;
   }
 }
 

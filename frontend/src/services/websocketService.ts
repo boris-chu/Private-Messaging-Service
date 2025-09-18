@@ -1,6 +1,17 @@
+interface MessageData {
+  content?: string;
+  users?: string[];
+  status?: string;
+  messageId?: string;
+  publicKey?: string;
+  userId?: string;
+  encryptedContent?: string;
+  [key: string]: unknown;
+}
+
 interface WebSocketMessage {
   type: 'message' | 'user_joined' | 'user_left' | 'user_list' | 'connection_status' | 'error' | 'auth' | 'user_list_request' | 'message_read' | 'message_delivered' | 'public_key_exchange' | 'public_key_request' | 'encrypted_message';
-  data: any;
+  data: MessageData;
   timestamp: number;
   sender?: string;
 }
@@ -17,7 +28,7 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval = 1000;
-  private listeners: Map<string, Function[]> = new Map();
+  private listeners: Map<string, Array<(...args: unknown[]) => void>> = new Map();
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
   private authToken: string | null = null;
   private manualDisconnect = false; // Track if user manually disconnected
@@ -274,14 +285,14 @@ class WebSocketService {
   }
 
   // Event system
-  on(event: string, callback: Function): void {
+  on(event: string, callback: (...args: unknown[]) => void): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
     this.listeners.get(event)!.push(callback);
   }
 
-  off(event: string, callback: Function): void {
+  off(event: string, callback: (...args: unknown[]) => void): void {
     const eventListeners = this.listeners.get(event);
     if (eventListeners) {
       const index = eventListeners.indexOf(callback);
@@ -291,7 +302,7 @@ class WebSocketService {
     }
   }
 
-  private emit(event: string, data: any): void {
+  private emit(event: string, data: unknown): void {
     const eventListeners = this.listeners.get(event);
     if (eventListeners) {
       eventListeners.forEach(callback => {

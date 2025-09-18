@@ -14,6 +14,22 @@ import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
 import type { EncryptionState } from '../components/EncryptionStatus';
 
+interface User {
+  username: string;
+  fullName?: string;
+}
+
+interface ExtendedTerminal extends XTerm {
+  _onCommand?: (command: string) => void;
+  _onConnect?: () => void;
+}
+
+interface EncryptionDetails {
+  encryptedUserCount?: number;
+  totalUserCount?: number;
+  error?: string;
+}
+
 interface TerminalProps {
   onCommand?: (command: string) => void;
   onConnect?: () => void;
@@ -40,7 +56,8 @@ export const Terminal: React.FC<TerminalProps> = ({
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
   const [prevPrivacySettings, setPrevPrivacySettings] = useState(privacySettings);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const terminalCommandChangeRef = useRef(false); // Track if change came from terminal command
 
   // Load user data
   useEffect(() => {
@@ -229,7 +246,7 @@ export const Terminal: React.FC<TerminalProps> = ({
                 terminal.writeln('\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection established');
                 terminal.writeln('\x1b[32m[CRYPTO]\x1b[0m RSA-OAEP 2048-bit end-to-end encryption initialized');
                 messageService.requestUserList();
-                ((terminal as any)._onConnect || onConnect)?.();
+                ((terminal as ExtendedTerminal)._onConnect || onConnect)?.();
               })
               .catch((error) => {
                 terminal.writeln(`\x1b[31m[ERROR]\x1b[0m Failed to connect: ${error.message}`);
@@ -304,6 +321,7 @@ export const Terminal: React.FC<TerminalProps> = ({
 
         case 'read -on':
           if (!privacySettings.showReadReceipts) {
+            terminalCommandChangeRef.current = true; // Mark as terminal command change
             updatePrivacySettings({ showReadReceipts: true });
             terminal.writeln('\x1b[32m[PRIVACY]\x1b[0m Read receipts enabled');
             terminal.writeln('\x1b[90mOther users will see when you read their messages\x1b[0m');
@@ -314,6 +332,7 @@ export const Terminal: React.FC<TerminalProps> = ({
 
         case 'read -off':
           if (privacySettings.showReadReceipts) {
+            terminalCommandChangeRef.current = true; // Mark as terminal command change
             updatePrivacySettings({ showReadReceipts: false });
             terminal.writeln('\x1b[31m[PRIVACY]\x1b[0m Read receipts disabled');
             terminal.writeln('\x1b[90mOther users will not see when you read their messages\x1b[0m');
@@ -355,7 +374,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           }
       }
 
-      ((terminal as any)._onCommand || onCommand)?.(command);
+      ((terminal as ExtendedTerminal)._onCommand || onCommand)?.(command);
     }
 
 
@@ -412,7 +431,7 @@ export const Terminal: React.FC<TerminalProps> = ({
         }
         showPrompt();
       },
-      onEncryptionStateChange: (state: EncryptionState, details?: any) => {
+      onEncryptionStateChange: (state: EncryptionState, details?: EncryptionDetails) => {
         // Show encryption status updates in terminal
         switch (state) {
           case 'initializing':
@@ -472,8 +491,8 @@ export const Terminal: React.FC<TerminalProps> = ({
     const currentTerminal = xtermRef.current;
     if (currentTerminal) {
       // Update internal callback references
-      (currentTerminal as any)._onCommand = onCommand;
-      (currentTerminal as any)._onConnect = onConnect;
+      (currentTerminal as ExtendedTerminal)._onCommand = onCommand;
+      (currentTerminal as ExtendedTerminal)._onConnect = onConnect;
     }
   }, [onCommand, onConnect]);
 
@@ -494,18 +513,19 @@ export const Terminal: React.FC<TerminalProps> = ({
 
     // Check if read receipts setting changed (but only if we have a real change, not initial load)
     if (prevPrivacySettings.showReadReceipts !== privacySettings.showReadReceipts) {
-      const status = privacySettings.showReadReceipts ? 'enabled' : 'disabled';
-      const color = privacySettings.showReadReceipts ? '32' : '31';
+      // Only show message if this change did NOT come from a terminal command
+      if (!terminalCommandChangeRef.current) {
+        const status = privacySettings.showReadReceipts ? 'enabled' : 'disabled';
+        const color = privacySettings.showReadReceipts ? '32' : '31';
+        terminal.writeln(`\x1b[${color}m[PRIVACY]\x1b[0m Read receipts ${status} via settings`);
 
-      // Only show "via settings" if this change came from outside the terminal commands
-      // The terminal commands already show their own feedback
-      const changeSource = 'via settings';
-      terminal.writeln(`\x1b[${color}m[PRIVACY]\x1b[0m Read receipts ${status} ${changeSource}`);
-
-      // Show new prompt
-      const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
-      const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
-      terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
+        // Show new prompt
+        const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
+        const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
+        terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
+      }
+      // Reset the flag after processing
+      terminalCommandChangeRef.current = false;
     }
 
     // Check if online status setting changed

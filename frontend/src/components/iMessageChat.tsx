@@ -19,12 +19,25 @@ import {
   DoneAll,
   Settings,
   Logout,
+  LightMode,
+  DarkMode,
 } from '@mui/icons-material';
 import { messageService } from '../services/messageService';
 import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
 import { EncryptionStatus, MessageEncryptionBadge } from './EncryptionStatus';
 import type { EncryptionState } from './EncryptionStatus';
+
+interface User {
+  username: string;
+  fullName?: string;
+}
+
+interface EncryptionDetails {
+  encryptedUserCount?: number;
+  totalUserCount?: number;
+  error?: string;
+}
 
 interface iMessageChatProps {
   connected?: boolean;
@@ -41,7 +54,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   onLogout,
   onlineUserCount = 0
 }) => {
-  const { privacySettings } = useTheme();
+  const { privacySettings, colorMode, setColorMode } = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
@@ -51,7 +64,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   // Load user data
   useEffect(() => {
@@ -78,6 +91,10 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   const handleLogout = () => {
     setAnchorEl(null);
     onLogout?.();
+  };
+
+  const handleThemeToggle = () => {
+    setColorMode(colorMode === 'light' ? 'dark' : 'light');
   };
 
   const scrollToBottom = () => {
@@ -135,7 +152,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
       onConnectionStatusChange: (connected: boolean) => {
         setIsConnected(connected);
       },
-      onEncryptionStateChange: (state: EncryptionState, details?: any) => {
+      onEncryptionStateChange: (state: EncryptionState, details?: EncryptionDetails) => {
         setEncryptionState(state);
         setEncryptedUserCount(details?.encryptedUserCount || 0);
       }
@@ -178,13 +195,31 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Theme-aware colors
+  const isDark = colorMode === 'dark';
+  const colors = {
+    background: isDark ? '#1c1c1e' : '#ffffff',
+    headerBg: isDark ? '#2c2c2e' : '#f6f6f6',
+    headerBorder: isDark ? '#3a3a3c' : '#e5e5ea',
+    encryptionBg: isDark ? '#2c2c2e' : '#f0f0f0',
+    encryptionBorder: isDark ? '#3a3a3c' : '#e5e5ea',
+    messagesBg: isDark ? '#1c1c1e' : '#ffffff',
+    inputBg: isDark ? '#2c2c2e' : '#ffffff',
+    inputBorder: isDark ? '#3a3a3c' : '#e5e5ea',
+    sidebarBg: isDark ? '#2c2c2e' : '#f6f6f6',
+    sidebarBorder: isDark ? '#3a3a3c' : '#e5e5ea',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#8E8E93' : '#8A8A8E',
+    brandColor: isDark ? '#0A84FF' : '#007AFF',
+  };
+
   return (
     <Paper
       elevation={0}
       sx={{
         height: '100vh',
         width: '100vw',
-        bgcolor: '#ffffff',
+        bgcolor: colors.background,
         border: 'none',
         borderRadius: 0,
         overflow: 'hidden',
@@ -200,8 +235,8 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           justifyContent: 'space-between',
           px: 2,
           py: 1.5,
-          bgcolor: '#f6f6f6',
-          borderBottom: '1px solid #e5e5ea',
+          bgcolor: colors.headerBg,
+          borderBottom: `1px solid ${colors.headerBorder}`,
           minHeight: '48px'
         }}
       >
@@ -209,7 +244,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           {/* Axol Chat Branding */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <img src="/axolotl.png" alt="Axol" style={{ width: 24, height: 24 }} />
-            <Typography variant="h6" sx={{ color: '#007AFF', fontSize: '16px', fontWeight: 600 }}>
+            <Typography variant="h6" sx={{ color: colors.brandColor, fontSize: '16px', fontWeight: 600 }}>
               Axol Chat
             </Typography>
           </Box>
@@ -222,7 +257,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
                 color: isConnected ? '#34C759' : '#FF3B30'
               }}
             />
-            <Box sx={{ fontSize: '13px', color: '#8A8A8E', fontWeight: 500 }}>
+            <Box sx={{ fontSize: '13px', color: colors.textSecondary, fontWeight: 500 }}>
               {isConnected ? 'Connected' : 'Disconnected'}
             </Box>
           </Box>
@@ -230,7 +265,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           {/* Online User Count */}
           {isConnected && onlineUserCount > 0 && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="body2" sx={{ color: '#8A8A8E', fontSize: '12px' }}>
+              <Typography variant="body2" sx={{ color: colors.textSecondary, fontSize: '12px' }}>
                 {onlineUserCount} user{onlineUserCount !== 1 ? 's' : ''} online
               </Typography>
             </Box>
@@ -238,17 +273,28 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {/* Theme Toggle */}
+          <Tooltip title={`Switch to ${colorMode === 'light' ? 'dark' : 'light'} mode`}>
+            <IconButton
+              size="small"
+              onClick={handleThemeToggle}
+              sx={{ color: colors.textSecondary, '&:hover': { color: colors.brandColor } }}
+            >
+              {colorMode === 'light' ? <DarkMode fontSize="small" /> : <LightMode fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+
           {user && (
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
-                <Typography variant="body2" sx={{ color: '#8A8A8E', fontSize: '12px' }}>
+                <Typography variant="body2" sx={{ color: colors.textSecondary, fontSize: '12px' }}>
                   {user.fullName || user.username}
                 </Typography>
                 <Tooltip title="User Menu">
                   <IconButton
                     size="small"
                     onClick={handleMenu}
-                    sx={{ color: '#8A8A8E', '&:hover': { color: '#007AFF' } }}
+                    sx={{ color: colors.textSecondary, '&:hover': { color: colors.brandColor } }}
                   >
                     <img src="/axolotl.png" alt="User Avatar" style={{ width: 20, height: 20, borderRadius: '50%' }} />
                   </IconButton>
@@ -267,8 +313,8 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           p: 1,
-          bgcolor: '#f0f0f0',
-          borderBottom: '1px solid #e5e5ea'
+          bgcolor: colors.encryptionBg,
+          borderBottom: `1px solid ${colors.encryptionBorder}`
         }}>
           <EncryptionStatus
             state={encryptionState}
@@ -283,8 +329,10 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           flex: 1,
           overflow: 'auto',
           p: 2,
-          bgcolor: '#ffffff',
-          backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%)'
+          bgcolor: colors.messagesBg,
+          backgroundImage: isDark
+            ? 'linear-gradient(180deg, #1c1c1e 0%, #161618 100%)'
+            : 'linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%)'
         }}>
           {!isConnected && (
             <Box sx={{
@@ -296,7 +344,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
               gap: 2
             }}>
               <img src="/axolotl.png" alt="Axol" style={{ width: 64, height: 64, opacity: 0.5 }} />
-              <Typography sx={{ color: '#8e8e93', fontSize: '1.1rem' }}>
+              <Typography sx={{ color: colors.textSecondary, fontSize: '1.1rem' }}>
                 Not connected to chat
               </Typography>
               <Chip
@@ -313,10 +361,10 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
                 }}
                 clickable
                 sx={{
-                  bgcolor: '#007AFF',
+                  bgcolor: colors.brandColor,
                   color: 'white',
                   '&:hover': {
-                    bgcolor: '#0056b3'
+                    bgcolor: isDark ? '#0080FF' : '#0056b3'
                   },
                   px: 3,
                   py: 1,
@@ -349,8 +397,8 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
                   label={message.content}
                   size="small"
                   sx={{
-                    bgcolor: 'rgba(0,0,0,0.1)',
-                    color: 'text.secondary',
+                    bgcolor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                    color: colors.textSecondary,
                     fontSize: '0.75rem'
                   }}
                 />
@@ -362,7 +410,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
                   alignItems: message.isSelf ? 'flex-end' : 'flex-start'
                 }}>
                   {!message.isSelf && (
-                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, px: 1 }}>
+                    <Typography variant="caption" sx={{ mb: 0.5, px: 1, color: colors.textSecondary }}>
                       {message.sender}
                     </Typography>
                   )}
@@ -372,10 +420,10 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
                       p: 1.5,
                       borderRadius: '18px',
                       bgcolor: message.isSelf ? (
-                        message.status === 'sending' ? '#A0A0A0' :
-                        '#007AFF'
-                      ) : '#e5e5ea',
-                      color: message.isSelf ? 'white' : '#000000',
+                        message.status === 'sending' ? (isDark ? '#666666' : '#A0A0A0') :
+                        colors.brandColor
+                      ) : (isDark ? '#2c2c2e' : '#e5e5ea'),
+                      color: message.isSelf ? 'white' : colors.text,
                       borderBottomRightRadius: message.isSelf ? '4px' : '18px',
                       borderBottomLeftRadius: message.isSelf ? '18px' : '4px',
                       maxWidth: '100%',
@@ -389,21 +437,21 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
                     </Typography>
                   </Paper>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25, px: 1 }}>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
                       {formatTime(message.timestamp)}
                     </Typography>
                     <MessageEncryptionBadge isEncrypted={message.isEncrypted || false} size="small" />
                     {message.isSelf && (
                       message.status === 'sending' ? (
-                        <Typography variant="caption" sx={{ fontSize: 10, color: 'text.disabled' }}>
+                        <Typography variant="caption" sx={{ fontSize: 10, color: colors.textSecondary, opacity: 0.7 }}>
                           Sending...
                         </Typography>
                       ) : message.status === 'delivered' ? (
-                        <Typography variant="caption" sx={{ fontSize: 10, color: 'text.secondary' }}>
+                        <Typography variant="caption" sx={{ fontSize: 10, color: colors.textSecondary }}>
                           Delivered
                         </Typography>
                       ) : message.status === 'read' && privacySettings.showReadReceipts ? (
-                        <DoneAll sx={{ fontSize: 12, color: '#007AFF' }} />
+                        <DoneAll sx={{ fontSize: 12, color: colors.brandColor }} />
                       ) : null
                     )}
                   </Box>
@@ -418,8 +466,8 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
         {/* Input */}
         <Box sx={{
           p: 2,
-          borderTop: '1px solid #e5e5ea',
-          bgcolor: '#f6f6f6'
+          borderTop: `1px solid ${colors.inputBorder}`,
+          bgcolor: colors.headerBg
         }}>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
             <TextField
@@ -436,16 +484,21 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '20px',
-                  bgcolor: '#ffffff',
-                  border: '1px solid #d1d1d6',
+                  bgcolor: colors.inputBg,
+                  border: `1px solid ${colors.inputBorder}`,
+                  color: colors.text,
                   '&:hover': {
-                    borderColor: '#007AFF'
+                    borderColor: colors.brandColor
                   },
                   '&.Mui-focused': {
-                    borderColor: '#007AFF'
+                    borderColor: colors.brandColor
                   },
                   '& fieldset': {
                     border: 'none'
+                  },
+                  '& input::placeholder, & textarea::placeholder': {
+                    color: colors.textSecondary,
+                    opacity: 1
                   }
                 }
               }}
@@ -454,16 +507,16 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || !isConnected}
               sx={{
-                bgcolor: inputMessage.trim() && isConnected ? '#007AFF' : '#c7c7cc',
+                bgcolor: inputMessage.trim() && isConnected ? colors.brandColor : (isDark ? '#444444' : '#c7c7cc'),
                 color: 'white',
                 width: 32,
                 height: 32,
                 '&:hover': {
-                  bgcolor: inputMessage.trim() && isConnected ? '#0056b3' : '#c7c7cc',
+                  bgcolor: inputMessage.trim() && isConnected ? (isDark ? '#0080FF' : '#0056b3') : (isDark ? '#444444' : '#c7c7cc'),
                 },
                 '&.Mui-disabled': {
                   color: 'white',
-                  bgcolor: '#c7c7cc'
+                  bgcolor: isDark ? '#444444' : '#c7c7cc'
                 }
               }}
             >
@@ -476,17 +529,17 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
       {/* User List Sidebar */}
       <Box sx={{
         width: 260,
-        borderLeft: '1px solid #e5e5ea',
-        bgcolor: '#f6f6f6',
+        borderLeft: `1px solid ${colors.sidebarBorder}`,
+        bgcolor: colors.sidebarBg,
         display: 'flex',
         flexDirection: 'column'
       }}>
         <Box sx={{
           p: 2,
-          borderBottom: '1px solid #e5e5ea',
-          bgcolor: '#ffffff'
+          borderBottom: `1px solid ${colors.sidebarBorder}`,
+          bgcolor: colors.headerBg
         }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#000000' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: colors.text }}>
             Online Users
           </Typography>
         </Box>
@@ -494,7 +547,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
         <List sx={{ flex: 1, overflow: 'auto', p: 0 }}>
           {onlineUsers.length === 0 ? (
             <ListItem>
-              <Typography sx={{ color: '#8e8e93', textAlign: 'center', width: '100%', py: 4 }}>
+              <Typography sx={{ color: colors.textSecondary, textAlign: 'center', width: '100%', py: 4 }}>
                 No users online
               </Typography>
             </ListItem>
@@ -503,9 +556,9 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
               <ListItemButton
                 key={index}
                 sx={{
-                  borderBottom: '1px solid #e5e5ea',
+                  borderBottom: `1px solid ${colors.sidebarBorder}`,
                   '&:hover': {
-                    bgcolor: '#e5e5ea'
+                    bgcolor: isDark ? '#3a3a3c' : '#e5e5ea'
                   },
                   py: 1.5,
                   px: 2
@@ -514,10 +567,10 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                   <img src="/axolotl.png" alt="User" style={{ width: 32, height: 32, borderRadius: '50%' }} />
                   <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ color: '#000000', fontWeight: 500 }}>
+                    <Typography sx={{ color: colors.text, fontWeight: 500 }}>
                       {user}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: '#8e8e93' }}>
+                    <Typography variant="caption" sx={{ color: colors.textSecondary }}>
                       Active now
                     </Typography>
                   </Box>

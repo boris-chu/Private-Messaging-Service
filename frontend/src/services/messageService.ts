@@ -4,6 +4,34 @@ import type { EncryptionState } from '../components/EncryptionStatus';
 
 export type MessageStatus = 'sending' | 'delivered' | 'read';
 
+interface EncryptionDetails {
+  encryptedUserCount?: number;
+  totalUserCount?: number;
+  error?: string;
+}
+
+interface MessageData {
+  content?: string;
+  messageId?: string;
+  sender?: string;
+  timestamp?: number;
+  isEncrypted?: boolean;
+}
+
+interface UserData {
+  username?: string;
+  users?: string[];
+}
+
+interface PublicKeyData {
+  username: string;
+  publicKey: string;
+}
+
+interface ConnectionStatusData {
+  connected: boolean;
+}
+
 export interface Message {
   id: string;
   content: string;
@@ -26,7 +54,7 @@ export interface MessageServiceConfig {
   onUserLeft: (user: string) => void;
   onUserListUpdate: (users: string[]) => void;
   onConnectionStatusChange: (connected: boolean) => void;
-  onEncryptionStateChange: (state: EncryptionState, details?: any) => void;
+  onEncryptionStateChange: (state: EncryptionState, details?: EncryptionDetails) => void;
 }
 
 class MessageService {
@@ -74,7 +102,7 @@ class MessageService {
     }
   }
 
-  private updateEncryptionState(state: EncryptionState, details?: any) {
+  private updateEncryptionState(state: EncryptionState, details?: EncryptionDetails) {
     this.encryptionState = state;
     this.config?.onEncryptionStateChange(state, {
       encryptedUserCount: this.encryptedUsers.size,
@@ -100,7 +128,7 @@ class MessageService {
     this.config = null;
   }
 
-  private handleMessage = (data: any) => {
+  private handleMessage = (data: MessageData) => {
     if (!this.config) return;
 
     const message: Message = {
@@ -126,7 +154,7 @@ class MessageService {
     this.config.onMessageReceived(message);
   };
 
-  private handleEncryptedMessage = async (data: any) => {
+  private handleEncryptedMessage = async (data: MessageData) => {
     if (!this.config) return;
 
     try {
@@ -175,7 +203,7 @@ class MessageService {
     }
   };
 
-  private handlePublicKeyReceived = async (data: any) => {
+  private handlePublicKeyReceived = async (data: PublicKeyData) => {
     const { username, publicKey } = data;
     if (username === this.currentUser) return; // Ignore our own key
 
@@ -194,7 +222,7 @@ class MessageService {
     }
   };
 
-  private handlePublicKeyRequested = async (data: any) => {
+  private handlePublicKeyRequested = async (data: UserData) => {
     const { username } = data;
     try {
       // Send our public key to the requesting user
@@ -206,32 +234,32 @@ class MessageService {
     }
   };
 
-  private handleMessageDelivered = (data: any) => {
+  private handleMessageDelivered = (data: MessageData) => {
     if (!this.config) return;
     this.config.onMessageStatusUpdate(data.messageId, 'delivered');
   };
 
-  private handleMessageRead = (data: any) => {
+  private handleMessageRead = (data: MessageData) => {
     if (!this.config) return;
     this.config.onMessageStatusUpdate(data.messageId, 'read');
   };
 
-  private handleUserJoined = (data: any) => {
+  private handleUserJoined = (data: UserData) => {
     if (!this.config) return;
     this.config.onUserJoined(data.user);
   };
 
-  private handleUserLeft = (data: any) => {
+  private handleUserLeft = (data: UserData) => {
     if (!this.config) return;
     this.config.onUserLeft(data.user);
   };
 
-  private handleUserList = (data: any) => {
+  private handleUserList = (data: UserData) => {
     if (!this.config) return;
     this.config.onUserListUpdate(data.users || []);
   };
 
-  private handleConnectionStatus = (data: any) => {
+  private handleConnectionStatus = (data: ConnectionStatusData) => {
     if (!this.config) return;
     this.config.onConnectionStatusChange(data.status === 'connected');
   };

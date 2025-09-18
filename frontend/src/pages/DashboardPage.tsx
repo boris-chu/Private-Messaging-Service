@@ -10,10 +10,23 @@ import { SettingsModal } from '../components/SettingsModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { websocketService } from '../services/websocketService';
 
+interface User {
+  username: string;
+  fullName?: string;
+}
+
+interface ConnectionStatusData {
+  status: string;
+}
+
+interface UserListData {
+  users?: string[];
+}
+
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { chatTheme } = useTheme();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [connected, setConnected] = useState(false);
   const [onlineUserCount, setOnlineUserCount] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -37,6 +50,19 @@ export const DashboardPage: React.FC = () => {
     navigate('/login');
   };
 
+  const handleDeleteAccount = () => {
+    // Disconnect from websocket
+    websocketService.disconnect();
+    // Clear all user data
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('axol-chat-theme');
+    localStorage.removeItem('axol-color-mode');
+    localStorage.removeItem('axol-privacy-settings');
+    // Navigate to login
+    navigate('/login');
+  };
+
   const handleConnect = useCallback(() => {
     console.log('Connecting to WebSocket...');
     setConnected(websocketService.isConnected);
@@ -48,11 +74,11 @@ export const DashboardPage: React.FC = () => {
 
   // Listen for WebSocket connection changes
   useEffect(() => {
-    const handleConnectionStatus = (data: any) => {
+    const handleConnectionStatus = (data: ConnectionStatusData) => {
       setConnected(data.status === 'connected');
     };
 
-    const handleUserList = (data: any) => {
+    const handleUserList = (data: UserListData) => {
       setOnlineUserCount(data.users ? data.users.length : 0);
     };
 
@@ -113,6 +139,7 @@ export const DashboardPage: React.FC = () => {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        onDeleteAccount={handleDeleteAccount}
       />
     </Box>
   );
