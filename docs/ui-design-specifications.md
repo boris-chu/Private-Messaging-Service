@@ -2,10 +2,12 @@
 
 ## 🎨 Design Philosophy
 
-### Hybrid Interface Approach
-- **Material UI**: Modern, professional interface for authentication, user management, and settings
-- **Terminal Interface**: Unique, developer-friendly interface for actual messaging
-- **Seamless Transition**: Smooth flow between modern UI and terminal experience
+### Mobile-First Hybrid Interface
+- **Progressive Web App**: Native app experience in the browser
+- **Material UI**: Modern, mobile-optimized interface for authentication and management
+- **Responsive Terminal**: Touch-friendly terminal interface for messaging
+- **Cross-Platform**: Seamless experience on desktop, tablet, and mobile
+- **Offline Capable**: Service worker for offline message caching
 
 ### Visual Hierarchy
 ```
@@ -467,26 +469,218 @@ export const theme = createTheme({
 });
 ```
 
-## 📱 Responsive Design
+## 📱 Mobile-First Responsive Design
 
-### Mobile Considerations
+### Progressive Web App (PWA) Features
 ```tsx
-// Responsive layout for mobile
+// PWA Configuration for mobile app experience
+const PWAConfig = {
+  name: "SecureMsg",
+  short_name: "SecureMsg",
+  description: "Private Company Secure Messaging",
+  theme_color: "#00d4aa",
+  background_color: "#0a0a0a",
+  display: "standalone",
+  orientation: "portrait",
+  start_url: "/",
+  icons: [
+    {
+      src: "/icons/icon-192x192.png",
+      sizes: "192x192",
+      type: "image/png"
+    },
+    {
+      src: "/icons/icon-512x512.png",
+      sizes: "512x512",
+      type: "image/png"
+    }
+  ]
+};
+```
+
+### Mobile-Optimized Layout
+```tsx
+// Mobile-first responsive layout
 <Box sx={{
   display: 'flex',
   flexDirection: { xs: 'column', md: 'row' },
-  height: '100vh'
+  height: '100vh',
+  overflow: 'hidden'
 }}>
-  {/* Mobile: Bottom navigation, Desktop: Sidebar */}
-  <Hidden mdUp>
-    <BottomNavigation>
-      <BottomNavigationAction label="Dashboard" icon={<DashboardIcon />} />
-      <BottomNavigationAction label="Contacts" icon={<ContactsIcon />} />
-      <BottomNavigationAction label="Terminal" icon={<TerminalIcon />} />
-      <BottomNavigationAction label="Settings" icon={<SettingsIcon />} />
-    </BottomNavigation>
-  </Hidden>
+  {/* Mobile: Full-screen views with navigation */}
+  <Box sx={{
+    display: { xs: 'flex', md: 'none' },
+    flexDirection: 'column',
+    height: '100vh'
+  }}>
+    {/* Mobile content */}
+  </Box>
+
+  {/* Desktop: Sidebar + main content */}
+  <Box sx={{
+    display: { xs: 'none', md: 'flex' },
+    width: '100%'
+  }}>
+    {/* Desktop layout */}
+  </Box>
 </Box>
+```
+
+### Mobile Navigation
+```tsx
+// Bottom navigation for mobile
+<BottomNavigation
+  value={activeTab}
+  onChange={handleTabChange}
+  sx={{
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    borderTop: '1px solid',
+    borderColor: 'divider'
+  }}
+>
+  <BottomNavigationAction
+    label="Messages"
+    value="messages"
+    icon={<ChatIcon />}
+  />
+  <BottomNavigationAction
+    label="Contacts"
+    value="contacts"
+    icon={<ContactsIcon />}
+  />
+  <BottomNavigationAction
+    label="Terminal"
+    value="terminal"
+    icon={<TerminalIcon />}
+  />
+  <BottomNavigationAction
+    label="Settings"
+    value="settings"
+    icon={<SettingsIcon />}
+  />
+</BottomNavigation>
+```
+
+### Touch-Friendly Terminal Interface
+```tsx
+// Mobile-optimized terminal with touch support
+<Box sx={{
+  height: { xs: 'calc(100vh - 56px)', md: '100vh' }, // Account for mobile nav
+  display: 'flex',
+  flexDirection: 'column'
+}}>
+  {/* Mobile terminal header */}
+  <AppBar position="static" sx={{ display: { xs: 'flex', md: 'none' } }}>
+    <Toolbar variant="dense">
+      <IconButton onClick={showKeyboard}>
+        <KeyboardIcon />
+      </IconButton>
+      <Typography variant="h6" sx={{ flexGrow: 1 }}>
+        Terminal
+      </Typography>
+      <IconButton onClick={showCommands}>
+        <HelpIcon />
+      </IconButton>
+    </Toolbar>
+  </AppBar>
+
+  {/* Terminal component with touch optimization */}
+  <Box sx={{
+    flexGrow: 1,
+    '& .xterm-viewport': {
+      // Enable smooth scrolling on mobile
+      '-webkit-overflow-scrolling': 'touch',
+      overflowY: 'auto'
+    }
+  }}>
+    <TerminalComponent />
+  </Box>
+
+  {/* Mobile command shortcuts */}
+  <Paper sx={{
+    display: { xs: 'flex', md: 'none' },
+    p: 1,
+    gap: 1,
+    overflowX: 'auto'
+  }}>
+    <Chip
+      label="/connect"
+      size="small"
+      onClick={() => insertCommand('/connect ')}
+    />
+    <Chip
+      label="/list"
+      size="small"
+      onClick={() => insertCommand('/list')}
+    />
+    <Chip
+      label="/help"
+      size="small"
+      onClick={() => insertCommand('/help')}
+    />
+  </Paper>
+</Box>
+```
+
+### Mobile Authentication Forms
+```tsx
+// Mobile-optimized login/register forms
+<Container maxWidth="sm" sx={{
+  px: { xs: 2, md: 3 },
+  py: { xs: 2, md: 4 }
+}}>
+  <Card sx={{
+    mx: 'auto',
+    width: '100%',
+    maxWidth: { xs: '100%', md: 400 }
+  }}>
+    <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+      <Typography
+        variant="h4"
+        component="h1"
+        gutterBottom
+        sx={{
+          fontSize: { xs: '1.5rem', md: '2rem' },
+          textAlign: 'center'
+        }}
+      >
+        Sign In
+      </Typography>
+
+      <Box component="form" sx={{ mt: 2 }}>
+        <TextField
+          fullWidth
+          label="Username"
+          variant="outlined"
+          margin="normal"
+          size="medium"
+          InputProps={{
+            sx: { fontSize: { xs: '16px', md: '14px' } } // Prevent zoom on iOS
+          }}
+        />
+
+        {/* Large, touch-friendly button */}
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          size="large"
+          sx={{
+            mt: 3,
+            mb: 2,
+            minHeight: { xs: 48, md: 36 }
+          }}
+        >
+          Sign In
+        </Button>
+      </Box>
+    </CardContent>
+  </Card>
+</Container>
 ```
 
 ## 🔔 Notifications & Alerts
