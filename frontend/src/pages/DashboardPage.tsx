@@ -20,8 +20,7 @@ import {
   Logout,
   Settings,
   Security,
-  People,
-  Message
+  People
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { Terminal } from '../components/Terminal';
