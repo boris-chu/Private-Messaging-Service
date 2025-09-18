@@ -167,12 +167,12 @@ export const LoginPage: React.FC = () => {
               sx={{ mt: 1, mb: 2 }}
             />
 
-            {/* Cloudflare Turnstile - Show after failed attempts */}
-            {showCaptcha && (
+            {/* Cloudflare Turnstile - Show for demo or after failed attempts */}
+            {(showCaptcha || import.meta.env.VITE_ENV === 'development') && (
               <Fade in timeout={500}>
                 <Box sx={{ mt: 2, mb: 2 }}>
                   <Alert severity="info" sx={{ mb: 2 }} icon={<SecurityIcon />}>
-                    Please verify you're human to continue
+                    {showCaptcha ? 'Please verify you\'re human to continue' : 'Turnstile Widget Demo (Development Mode)'}
                   </Alert>
                   <TurnstileWidget
                     siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || 'demo-site-key'}
