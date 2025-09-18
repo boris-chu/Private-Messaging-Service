@@ -8,6 +8,7 @@ interface TurnstileAPI {
     theme?: string;
   }) => string;
   remove: (widgetId: string) => void;
+  reset?: (container: string | HTMLElement) => void;
 }
 
 declare global {
@@ -56,8 +57,8 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
             callback: onVerify,
             theme,
             size,
-            'error-callback': (error: string) => {
-              console.error('Turnstile error:', error);
+            'error-callback': () => {
+              console.error('Turnstile error');
             },
             'expired-callback': () => {
               console.warn('Turnstile token expired');

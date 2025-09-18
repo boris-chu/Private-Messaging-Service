@@ -16,11 +16,13 @@ interface MessageData {
   sender?: string;
   timestamp?: number;
   isEncrypted?: boolean;
+  encryptedContent?: string;
 }
 
 interface UserData {
   username?: string;
   users?: string[];
+  user?: string;
 }
 
 interface PublicKeyData {
@@ -29,7 +31,8 @@ interface PublicKeyData {
 }
 
 interface ConnectionStatusData {
-  connected: boolean;
+  connected?: boolean;
+  status?: string;
 }
 
 export interface Message {
@@ -133,9 +136,9 @@ class MessageService {
 
     const message: Message = {
       id: data.messageId || Date.now().toString(),
-      content: data.content,
-      sender: data.sender,
-      timestamp: data.timestamp,
+      content: data.content || '',
+      sender: data.sender || '',
+      timestamp: data.timestamp || Date.now(),
       isSelf: data.sender === this.currentUser,
       status: 'delivered',
       isRead: false,
@@ -159,13 +162,13 @@ class MessageService {
 
     try {
       // Decrypt the message
-      const decryptedContent = await cryptoService.decryptMessage(data.encryptedContent);
+      const decryptedContent = await cryptoService.decryptMessage(data.encryptedContent || '');
 
       const message: Message = {
         id: data.messageId || Date.now().toString(),
         content: decryptedContent,
-        sender: data.sender,
-        timestamp: data.timestamp,
+        sender: data.sender || '',
+        timestamp: data.timestamp || Date.now(),
         isSelf: data.sender === this.currentUser,
         status: 'delivered',
         isRead: false,
@@ -189,8 +192,8 @@ class MessageService {
       const message: Message = {
         id: data.messageId || Date.now().toString(),
         content: '[Encrypted message - decryption failed]',
-        sender: data.sender,
-        timestamp: data.timestamp,
+        sender: data.sender || '',
+        timestamp: data.timestamp || Date.now(),
         isSelf: data.sender === this.currentUser,
         status: 'delivered',
         isRead: false,
@@ -236,22 +239,22 @@ class MessageService {
 
   private handleMessageDelivered = (data: MessageData) => {
     if (!this.config) return;
-    this.config.onMessageStatusUpdate(data.messageId, 'delivered');
+    this.config.onMessageStatusUpdate(data.messageId || '', 'delivered');
   };
 
   private handleMessageRead = (data: MessageData) => {
     if (!this.config) return;
-    this.config.onMessageStatusUpdate(data.messageId, 'read');
+    this.config.onMessageStatusUpdate(data.messageId || '', 'read');
   };
 
   private handleUserJoined = (data: UserData) => {
     if (!this.config) return;
-    this.config.onUserJoined(data.user);
+    this.config.onUserJoined(data.user || '');
   };
 
   private handleUserLeft = (data: UserData) => {
     if (!this.config) return;
-    this.config.onUserLeft(data.user);
+    this.config.onUserLeft(data.user || '');
   };
 
   private handleUserList = (data: UserData) => {
@@ -261,7 +264,7 @@ class MessageService {
 
   private handleConnectionStatus = (data: ConnectionStatusData) => {
     if (!this.config) return;
-    this.config.onConnectionStatusChange(data.status === 'connected');
+    this.config.onConnectionStatusChange(data.status === 'connected' || data.connected === true);
   };
 
   async sendMessage(content: string, recipient?: string): Promise<{ messageId: string; isEncrypted: boolean }> {
