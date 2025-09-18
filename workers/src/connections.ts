@@ -175,14 +175,24 @@ export class ConnectionManager {
       }
     });
 
-    // Broadcast user joined event
+    // Send the current list of online users to the newly authenticated user
+    const currentUsers = Array.from(this.connectionUsers.values()).filter(u => u !== username);
+    if (currentUsers.length > 0) {
+      this.sendToConnection(connectionId, {
+        type: 'user_list',
+        data: { users: currentUsers },
+        timestamp: Date.now()
+      });
+    }
+
+    // Broadcast user joined event to others
     this.broadcastToOthers(connectionId, {
       type: 'user_joined',
       data: { user: username },
       timestamp: Date.now()
     });
 
-    console.log(`User ${username} authenticated on connection ${connectionId}`);
+    console.log(`User ${username} authenticated on connection ${connectionId}. Total users online: ${this.connectionUsers.size}`);
   }
 
   private handleConnectionRequest(connectionId: string, message: any): void {
