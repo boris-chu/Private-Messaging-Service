@@ -32,6 +32,7 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showAnonymousLogin, setShowAnonymousLogin] = useState(false);
+  const [showTurnstileForAnonymous, setShowTurnstileForAnonymous] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +73,18 @@ export const LoginPage: React.FC = () => {
     setShowRecovery(false);
     // Optionally show success message
     alert('Password reset successful! You can now login with your new password.');
+  };
+
+  const handleAnonymousClick = () => {
+    // Show Turnstile verification first for anonymous users
+    setShowTurnstileForAnonymous(true);
+  };
+
+  const handleAnonymousTurnstileVerify = (token: string) => {
+    // Turnstile verified for anonymous user, now show the anonymous login modal
+    setTurnstileToken(token);
+    setShowTurnstileForAnonymous(false);
+    setShowAnonymousLogin(true);
   };
 
   return (
@@ -192,6 +205,31 @@ export const LoginPage: React.FC = () => {
               </Fade>
             )}
 
+            {/* Cloudflare Turnstile - Show for anonymous login verification */}
+            {showTurnstileForAnonymous && (
+              <Fade in timeout={500}>
+                <Box sx={{ mt: 2, mb: 2 }}>
+                  <Alert severity="info" sx={{ mb: 2 }} icon={<SecurityIcon />}>
+                    Please verify you're human before starting anonymous chat
+                  </Alert>
+                  <TurnstileWidget
+                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || 'demo-site-key'}
+                    onVerify={handleAnonymousTurnstileVerify}
+                    theme="dark"
+                  />
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => setShowTurnstileForAnonymous(false)}
+                      size="small"
+                    >
+                      Cancel
+                    </Button>
+                  </Box>
+                </Box>
+              </Fade>
+            )}
+
             <Button
               type="submit"
               fullWidth
@@ -220,7 +258,7 @@ export const LoginPage: React.FC = () => {
               fullWidth
               variant="outlined"
               size="large"
-              onClick={() => setShowAnonymousLogin(true)}
+              onClick={handleAnonymousClick}
               sx={{
                 mt: 2,
                 mb: 2,

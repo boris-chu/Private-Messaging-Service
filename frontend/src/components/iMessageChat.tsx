@@ -27,6 +27,7 @@ import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
 import { EncryptionStatus, MessageEncryptionBadge } from './EncryptionStatus';
 import type { EncryptionState } from './EncryptionStatus';
+import { useChatMessages } from '../hooks/useChatStorage';
 
 interface User {
   username: string;
@@ -55,11 +56,10 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   onlineUserCount = 0
 }) => {
   const { privacySettings, colorMode, setColorMode } = useTheme();
-  const [messages, setMessages] = useState<Message[]>(() => {
-    // Load cached messages on component mount
-    const cachedMessages = localStorage.getItem('axol-chat-messages');
-    return cachedMessages ? JSON.parse(cachedMessages) : [];
-  });
+  const {
+    items: messages,
+    setItems: setMessages
+  } = useChatMessages<Message>();
   const [inputMessage, setInputMessage] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(connected);
@@ -78,10 +78,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
     }
   }, []);
 
-  // Persist messages to localStorage whenever messages change
-  useEffect(() => {
-    localStorage.setItem('axol-chat-messages', JSON.stringify(messages));
-  }, [messages]);
+  // Messages are now automatically persisted by the useChatStorage hook
 
   // Menu handlers
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {

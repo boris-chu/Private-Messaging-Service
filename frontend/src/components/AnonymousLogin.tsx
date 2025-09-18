@@ -160,6 +160,7 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
       // Store in both locations for compatibility
       localStorage.setItem('anonymousUser', JSON.stringify(demoUser));
       localStorage.setItem('user', JSON.stringify(demoUser));
+      localStorage.setItem('isAnonymousSession', 'true');
       localStorage.setItem('sessionToken', `demo-token-${anonymousUser.sessionId}`);
       localStorage.setItem('authToken', `demo-auth-${anonymousUser.sessionId}`);
 

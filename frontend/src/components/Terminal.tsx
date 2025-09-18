@@ -13,6 +13,7 @@ import { messageService } from '../services/messageService';
 import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
 import type { EncryptionState } from '../components/EncryptionStatus';
+import { useTerminalMessages } from '../hooks/useChatStorage';
 
 interface User {
   username: string;
@@ -54,11 +55,10 @@ export const Terminal: React.FC<TerminalProps> = ({
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   // Removed fixed terminal size - now using fit addon for dynamic sizing
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
-  const [terminalMessages, setTerminalMessages] = useState<string[]>(() => {
-    // Load cached terminal messages on component mount
-    const cachedTerminalMessages = localStorage.getItem('axol-terminal-messages');
-    return cachedTerminalMessages ? JSON.parse(cachedTerminalMessages) : [];
-  });
+  const {
+    items: terminalMessages,
+    addItem: addToTerminalHistory
+  } = useTerminalMessages();
   const [prevPrivacySettings, setPrevPrivacySettings] = useState(privacySettings);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -72,16 +72,13 @@ export const Terminal: React.FC<TerminalProps> = ({
     }
   }, []);
 
-  // Persist terminal messages to localStorage
-  useEffect(() => {
-    localStorage.setItem('axol-terminal-messages', JSON.stringify(terminalMessages));
-  }, [terminalMessages]);
+  // Terminal messages are now automatically persisted by the useChatStorage hook
 
   // Helper function to add message to terminal and history
   const addTerminalMessage = (message: string) => {
     if (xtermRef.current) {
       xtermRef.current.writeln(message);
-      setTerminalMessages(prev => [...prev, message]);
+      addToTerminalHistory(message);
     }
   };
 
