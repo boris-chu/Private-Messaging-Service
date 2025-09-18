@@ -580,7 +580,7 @@ export const Terminal: React.FC<TerminalProps> = ({
 
           const testWs = new WebSocket(fullWsUrl);
           const connectionTime = Date.now();
-          let testTimeout: NodeJS.Timeout;
+          let testTimeout: ReturnType<typeof setTimeout>;
 
           testWs.onopen = () => {
             const openTime = Date.now() - connectionTime;
