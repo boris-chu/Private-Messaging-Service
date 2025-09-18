@@ -89,6 +89,8 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
       return handleUserLogout(request, env);
     case path === '/auth/anonymous':
       return handleAnonymousLogin(request, env);
+    case path === '/auth/anonymous/logout':
+      return handleAnonymousLogout(request, env);
 
     // User management endpoints
     case path === '/users/heartbeat':
@@ -603,6 +605,23 @@ async function handleUsernameAvailability(request: Request, env: Env, username: 
       }
     });
   }
+}
+
+async function handleAnonymousLogout(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  // For anonymous logout, just return success
+  return new Response(JSON.stringify({
+    success: true,
+    message: 'Anonymous session ended successfully'
+  }), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
+  });
 }
 
 async function verifyTurnstileToken(token: string, ip: string, secretKey?: string): Promise<boolean> {

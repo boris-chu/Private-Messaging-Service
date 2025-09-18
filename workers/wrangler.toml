@@ -4,8 +4,8 @@ compatibility_date = "2025-01-01"
 
 [durable_objects]
 bindings = [
-  { name = "SESSIONS", class_name = "SessionManager" },
-  { name = "CONNECTIONS", class_name = "ConnectionManager" }
+  { name = "SESSIONS", class_name = "SessionManager", script_name = "secure-messaging" },
+  { name = "CONNECTIONS", class_name = "ConnectionManager", script_name = "secure-messaging" }
 ]
 
 [[migrations]]
