@@ -1,5 +1,5 @@
 interface WebSocketMessage {
-  type: 'message' | 'user_joined' | 'user_left' | 'user_list' | 'connection_status' | 'error' | 'auth' | 'user_list_request';
+  type: 'message' | 'user_joined' | 'user_left' | 'user_list' | 'connection_status' | 'error' | 'auth' | 'user_list_request' | 'message_read' | 'message_delivered';
   data: any;
   timestamp: number;
   sender?: string;
@@ -175,6 +175,22 @@ class WebSocketService {
       case 'error':
         this.emit('error', {
           error: message.data.error || 'Unknown error',
+          timestamp: message.timestamp
+        });
+        break;
+
+      case 'message_read':
+        this.emit('message_read', {
+          messageId: message.data.messageId,
+          readBy: message.sender,
+          timestamp: message.timestamp
+        });
+        break;
+
+      case 'message_delivered':
+        this.emit('message_delivered', {
+          messageId: message.data.messageId,
+          deliveredTo: message.sender,
           timestamp: message.timestamp
         });
         break;

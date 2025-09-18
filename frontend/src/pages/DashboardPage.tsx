@@ -24,14 +24,19 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { Terminal } from '../components/Terminal';
+import { iMessageChat } from '../components/iMessageChat';
+import { SettingsModal } from '../components/SettingsModal';
+import { useTheme } from '../contexts/ThemeContext';
 import { websocketService } from '../services/websocketService';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { chatTheme } = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<any>(null);
   const [connected, setConnected] = useState(false);
   const [onlineUserCount, setOnlineUserCount] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -48,6 +53,11 @@ export const DashboardPage: React.FC = () => {
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleSettings = () => {
+    setAnchorEl(null);
+    setSettingsOpen(true);
   };
 
   const handleLogout = () => {
@@ -108,20 +118,11 @@ export const DashboardPage: React.FC = () => {
       {/* App Bar */}
       <AppBar position="static" sx={{ bgcolor: 'background.paper' }}>
         <Toolbar>
-          <Security sx={{ mr: 2, color: '#00d4aa' }} />
+          <img src="/axolotl.png" alt="Axol" style={{ width: 32, height: 32, marginRight: 8 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Axol Chat
           </Typography>
 
-          {/* Connection Status */}
-          <Chip
-            icon={connected ? <Security /> : <Security />}
-            label={connected ? "Connected" : "Disconnected"}
-            color={connected ? "success" : "error"}
-            variant="outlined"
-            size="small"
-            sx={{ mr: 2 }}
-          />
 
           {/* User Menu */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -133,9 +134,7 @@ export const DashboardPage: React.FC = () => {
               onClick={handleMenu}
               color="inherit"
             >
-              <Avatar sx={{ width: 32, height: 32, bgcolor: '#00d4aa' }}>
-                {(user.fullName || user.username).charAt(0).toUpperCase()}
-              </Avatar>
+              <img src="/axolotl.png" alt="User Avatar" style={{ width: 32, height: 32, borderRadius: '50%' }} />
             </IconButton>
           </Box>
 
@@ -145,11 +144,7 @@ export const DashboardPage: React.FC = () => {
             onClose={handleClose}
             sx={{ mt: '45px' }}
           >
-            <MenuItem onClick={handleClose}>
-              <AccountCircle sx={{ mr: 1 }} />
-              Profile
-            </MenuItem>
-            <MenuItem onClick={handleClose}>
+            <MenuItem onClick={handleSettings}>
               <Settings sx={{ mr: 1 }} />
               Settings
             </MenuItem>
@@ -166,41 +161,47 @@ export const DashboardPage: React.FC = () => {
         <Fade in timeout={800}>
           <Box>
 
-            {/* Stats Cards */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr' }, gap: 3, mb: 4 }}>
-              <Card elevation={2}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <People sx={{ fontSize: 40, color: '#219ebc' }} />
-                    <Box>
-                      <Typography variant="h6">Online Users</Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                        {connected ? onlineUserCount : '0'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
+            {/* Discreet user count */}
+            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <People sx={{ fontSize: 16, color: '#8b949e' }} />
+              <Typography variant="body2" sx={{ color: '#8b949e' }}>
+                {connected ? `${onlineUserCount} user${onlineUserCount !== 1 ? 's' : ''} online` : 'Offline'}
+              </Typography>
             </Box>
 
-            {/* Terminal Section */}
+            {/* Chat Section */}
             <Paper
               elevation={2}
               sx={{
-                p: 3,
+                p: chatTheme === 'imessage' ? 0 : 3,
                 bgcolor: 'background.paper',
-                borderRadius: 2
+                borderRadius: 2,
+                height: { xs: '400px', md: '500px' },
+                overflow: 'hidden'
               }}
             >
-              <Terminal
-                connected={connected}
-                onConnect={handleConnect}
-                onCommand={handleCommand}
-              />
+              {chatTheme === 'terminal' ? (
+                <Terminal
+                  connected={connected}
+                  onConnect={handleConnect}
+                  onCommand={handleCommand}
+                />
+              ) : (
+                <iMessageChat
+                  connected={connected}
+                  onConnect={handleConnect}
+                />
+              )}
             </Paper>
           </Box>
         </Fade>
       </Container>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </Box>
   );
 };
