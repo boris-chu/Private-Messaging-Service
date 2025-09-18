@@ -92,8 +92,8 @@ export const Terminal: React.FC<TerminalProps> = ({
 
     // Initial welcome message
     terminal.writeln('\x1b[32m╭─────────────────────────────────────────────────────────╮\x1b[0m');
-    terminal.writeln('\x1b[32m│\x1b[0m                      \x1b[1;36mAxol Chat\x1b[0m                        \x1b[32m│\x1b[0m');
-    terminal.writeln('\x1b[32m│\x1b[0m              \x1b[33mAxol — private talk, under the shell.\x1b[0m              \x1b[32m│\x1b[0m');
+    terminal.writeln('\x1b[32m│\x1b[0m                      \x1b[1;36mAxol Chat\x1b[0m                          \x1b[32m│\x1b[0m');
+    terminal.writeln('\x1b[32m│\x1b[0m              \x1b[33mAxol — private talk, under the shell.\x1b[0m        \x1b[32m│\x1b[0m');
     terminal.writeln('\x1b[32m╰─────────────────────────────────────────────────────────╯\x1b[0m');
     terminal.writeln('');
 
