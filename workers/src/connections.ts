@@ -44,6 +44,7 @@ export class ConnectionManager {
     try {
       // Accept the WebSocket connection
       webSocket.accept();
+      console.log(`🟢 BACKEND: WebSocket accepted for connection ${connectionId}`);
 
       // Store connection with metadata
       this.connections.set(connectionId, webSocket);
@@ -97,7 +98,7 @@ export class ConnectionManager {
   private handleMessage(connectionId: string, data: string): void {
     try {
       const message = JSON.parse(data);
-      console.log(`Message from ${connectionId}:`, message);
+      console.log(`🟢 BACKEND: Message from ${connectionId}:`, message);
 
       switch (message.type) {
         case 'auth':
