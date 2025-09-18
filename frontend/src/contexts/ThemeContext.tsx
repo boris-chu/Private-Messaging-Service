@@ -9,6 +9,10 @@ interface PrivacySettings {
   showOnlineStatus: boolean;
 }
 
+interface DebugSettings {
+  websocketDebugEnabled: boolean;
+}
+
 interface ThemeContextType {
   chatTheme: ChatTheme;
   setChatTheme: (theme: ChatTheme) => void;
@@ -16,6 +20,8 @@ interface ThemeContextType {
   setColorMode: (mode: ColorMode) => void;
   privacySettings: PrivacySettings;
   updatePrivacySettings: (settings: Partial<PrivacySettings>) => void;
+  debugSettings: DebugSettings;
+  updateDebugSettings: (settings: Partial<DebugSettings>) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -52,6 +58,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     };
   });
 
+  const [debugSettings, setDebugSettings] = useState<DebugSettings>(() => {
+    const saved = localStorage.getItem('axol-debug-settings');
+    return saved ? JSON.parse(saved) : {
+      websocketDebugEnabled: false
+    };
+  });
+
   const updateChatTheme = (theme: ChatTheme) => {
     setChatTheme(theme);
     localStorage.setItem('axol-chat-theme', theme);
@@ -68,6 +81,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     localStorage.setItem('axol-privacy-settings', JSON.stringify(updated));
   };
 
+  const updateDebugSettings = (newSettings: Partial<DebugSettings>) => {
+    const updated = { ...debugSettings, ...newSettings };
+    setDebugSettings(updated);
+    localStorage.setItem('axol-debug-settings', JSON.stringify(updated));
+  };
+
   return (
     <ThemeContext.Provider value={{
       chatTheme,
@@ -75,7 +94,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       colorMode,
       setColorMode: updateColorMode,
       privacySettings,
-      updatePrivacySettings
+      updatePrivacySettings,
+      debugSettings,
+      updateDebugSettings
     }}>
       {children}
     </ThemeContext.Provider>

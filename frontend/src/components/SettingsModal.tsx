@@ -39,6 +39,7 @@ import {
   Download,
   VisibilityOff
 } from '@mui/icons-material';
+import { BugReport } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import type { ChatTheme } from '../contexts/ThemeContext';
 import {
@@ -59,7 +60,7 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose, onDeleteAccount }) => {
-  const { chatTheme, setChatTheme, privacySettings, updatePrivacySettings } = useTheme();
+  const { chatTheme, setChatTheme, privacySettings, updatePrivacySettings, debugSettings, updateDebugSettings } = useTheme();
   const [user, setUser] = useState<User>({ username: '', fullName: '' });
   const [editedUser, setEditedUser] = useState<User>({ username: '', fullName: '' });
   const [isEditing, setIsEditing] = useState(false);
@@ -121,6 +122,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose, onD
   const handlePrivacyToggle = (setting: keyof typeof privacySettings) => {
     updatePrivacySettings({
       [setting]: !privacySettings[setting]
+    });
+  };
+
+  const handleDebugToggle = (setting: keyof typeof debugSettings) => {
+    updateDebugSettings({
+      [setting]: !debugSettings[setting]
     });
   };
 
@@ -495,6 +502,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose, onD
                 <Switch
                   checked={privacySettings.showOnlineStatus}
                   onChange={() => handlePrivacyToggle('showOnlineStatus')}
+                  color="primary"
+                />
+              </ListItemSecondaryAction>
+            </ListItem>
+          </List>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Developer Tools Section */}
+          <Typography variant="h6" gutterBottom>
+            Developer Tools
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Advanced debugging and diagnostic tools for developers
+          </Typography>
+
+          <List sx={{ p: 0 }}>
+            <ListItem sx={{ px: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}>
+                <BugReport sx={{ color: 'primary.main' }} />
+              </Box>
+              <ListItemText
+                primary="WebSocket Debugging"
+                secondary="Show real-time WebSocket events, user broadcasting, and connection diagnostics"
+              />
+              <ListItemSecondaryAction>
+                <Switch
+                  checked={debugSettings.websocketDebugEnabled}
+                  onChange={() => handleDebugToggle('websocketDebugEnabled')}
                   color="primary"
                 />
               </ListItemSecondaryAction>

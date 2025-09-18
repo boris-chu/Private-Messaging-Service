@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Terminal } from '../components/Terminal';
 import { IMessageChat } from '../components/iMessageChat';
 import { SettingsModal } from '../components/SettingsModal';
+import { WebSocketDebugPanel } from '../components/WebSocketDebugPanel';
 import { useTheme } from '../contexts/ThemeContext';
 import { websocketService } from '../services/websocketService';
 import { anonymousSessionManager } from '../utils/anonymousSessionManager';
@@ -29,7 +30,7 @@ interface UserListData {
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { chatTheme } = useTheme();
+  const { chatTheme, debugSettings } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [connected, setConnected] = useState(false);
   const [onlineUserCount, setOnlineUserCount] = useState(0);
@@ -208,6 +209,13 @@ export const DashboardPage: React.FC = () => {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onDeleteAccount={handleDeleteAccount}
+      />
+
+      {/* WebSocket Debug Panel */}
+      <WebSocketDebugPanel
+        websocketService={websocketService}
+        enabled={debugSettings.websocketDebugEnabled}
+        onToggle={() => {}}
       />
     </Box>
   );
