@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import {
   Send,
+  Circle,
   DoneAll,
   Settings,
   Logout,
@@ -27,7 +28,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { EncryptionStatus, MessageEncryptionBadge } from './EncryptionStatus';
 import type { EncryptionState } from './EncryptionStatus';
 import { useChatMessages } from '../hooks/useChatStorage';
-import ConnectionStatusIndicator, { ConnectionStatus } from './ConnectionStatusIndicator';
+import ConnectionStatusIndicator, { type ConnectionStatus } from './ConnectionStatusIndicator';
 
 interface User {
   username: string;
