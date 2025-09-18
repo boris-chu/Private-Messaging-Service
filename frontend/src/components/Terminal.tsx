@@ -451,14 +451,18 @@ export const Terminal: React.FC<TerminalProps> = ({
       onUserListUpdate: (users: string[]) => {
         setOnlineUsers(users);
       },
-      onConnectionStatusChange: (isConnected: boolean) => {
-        if (isConnected) {
+      onConnectionStatusChange: (status: 'connected' | 'disconnected' | 'connecting') => {
+        if (status === 'connected') {
           terminal.writeln('\x1b[32m[SYSTEM]\x1b[0m WebSocket connection established');
+        } else if (status === 'connecting') {
+          terminal.writeln('\x1b[33m[SYSTEM]\x1b[0m Establishing WebSocket connection...');
         } else {
           terminal.writeln('\x1b[31m[SYSTEM]\x1b[0m WebSocket connection lost');
           setOnlineUsers([]);
         }
-        showPrompt();
+        if (status !== 'connecting') {
+          showPrompt();
+        }
       },
       onEncryptionStateChange: (state: EncryptionState, details?: EncryptionDetails) => {
         // Show encryption status updates in terminal
