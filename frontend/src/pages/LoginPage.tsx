@@ -97,7 +97,16 @@ export const LoginPage: React.FC = () => {
         <CardContent sx={{ p: { xs: 3, md: 4 } }}>
           {/* Logo/Title */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <SecurityIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+            <Box
+              component="img"
+              src="/axolotl.png"
+              alt="Axolotl Logo"
+              sx={{
+                width: 48,
+                height: 48,
+                mb: 2
+              }}
+            />
             <Typography
               variant="h4"
               component="h1"
