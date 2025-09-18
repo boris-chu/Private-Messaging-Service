@@ -346,7 +346,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           // WebSocket info
           terminal.writeln('\x1b[1;36mConnection:\x1b[0m');
           terminal.writeln(`  Connection Status: ${messageService.isConnected ? 'Connected' : 'Disconnected'}`);
-          terminal.writeln(`  WebSocket URL: ${process.env.NODE_ENV === 'production' ? 'wss://api.axolchat.com/ws' : 'ws://localhost:8080/ws'}`);
+          terminal.writeln(`  WebSocket URL: ${import.meta.env.PROD ? 'wss://api.axolchat.com/ws' : 'ws://localhost:8080/ws'}`);
 
           // Try to get more WebSocket details
           try {
@@ -357,7 +357,7 @@ export const Terminal: React.FC<TerminalProps> = ({
               terminal.writeln(`  Manual Disconnect: ${wsService.manualDisconnect ? 'Yes' : 'No'}`);
             }
           } catch (e) {
-            terminal.writeln(`  WS Details: Unable to access (${e.message})`);
+            terminal.writeln(`  WS Details: Unable to access (${e instanceof Error ? e.message : String(e)})`);
           }
           terminal.writeln('');
 
@@ -379,7 +379,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('\x1b[33mTesting connectivity...\x1b[0m');
 
           // Test fetch to the API
-          fetch(process.env.NODE_ENV === 'production' ? 'https://api.axolchat.com/health' : 'http://localhost:8080/health')
+          fetch(import.meta.env.PROD ? 'https://api.axolchat.com/health' : 'http://localhost:8080/health')
             .then(response => {
               terminal.writeln(`  API Health Check: ${response.ok ? '\x1b[32mOK\x1b[0m' : '\x1b[31mFailed\x1b[0m'} (${response.status})`);
             })
