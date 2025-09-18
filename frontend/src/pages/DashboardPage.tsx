@@ -9,10 +9,14 @@ import { IMessageChat } from '../components/iMessageChat';
 import { SettingsModal } from '../components/SettingsModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { websocketService } from '../services/websocketService';
+import { anonymousSessionManager } from '../utils/anonymousSessionManager';
 
 interface User {
   username: string;
   fullName?: string;
+  displayName?: string;
+  isAnonymous?: boolean;
+  sessionId?: string;
 }
 
 interface ConnectionStatusData {
@@ -32,12 +36,35 @@ export const DashboardPage: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
+    // Check for regular user session
     const userData = localStorage.getItem('user');
-    if (!userData) {
+    const anonymousUserData = localStorage.getItem('anonymousUser');
+    const isAnonymousSession = localStorage.getItem('isAnonymousSession') === 'true';
+
+    if (isAnonymousSession && anonymousUserData) {
+      // Handle anonymous user session with session manager
+      const restoredSession = anonymousSessionManager.restoreSession();
+      if (restoredSession) {
+        setUser({
+          username: restoredSession.username,
+          displayName: restoredSession.displayName,
+          fullName: restoredSession.displayName,
+          isAnonymous: true,
+          sessionId: restoredSession.sessionId
+        });
+      } else {
+        // Session expired or invalid, redirect to login
+        navigate('/login');
+        return;
+      }
+    } else if (userData) {
+      // Handle regular user session
+      setUser(JSON.parse(userData));
+    } else {
+      // No valid session, redirect to login
       navigate('/login');
       return;
     }
-    setUser(JSON.parse(userData));
 
     // Auto-reconnect to chat if user was previously connected
     const wasConnected = localStorage.getItem('axol-was-connected');
@@ -54,15 +81,25 @@ export const DashboardPage: React.FC = () => {
     setSettingsOpen(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Disconnect from websocket before logout
     websocketService.disconnect();
-    // Clear connection state and all user data
-    localStorage.removeItem('authToken');
+
+    // Handle anonymous session cleanup
+    if (user?.isAnonymous && anonymousSessionManager.isSessionActive()) {
+      await anonymousSessionManager.endSession();
+    }
+
+    // Clear all session data (regular and anonymous)
     localStorage.removeItem('user');
+    localStorage.removeItem('anonymousUser');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('sessionToken');
+    localStorage.removeItem('isAnonymousSession');
     localStorage.removeItem('axol-chat-messages'); // Clear message cache
     localStorage.removeItem('axol-terminal-messages'); // Clear terminal message cache
     localStorage.removeItem('axol-was-connected'); // Clear connection state
+
     navigate('/login');
   };
 

@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import SecurityIcon from '@mui/icons-material/Security';
 import { TurnstileWidget } from '../components/TurnstileWidget';
 import { PasswordRecovery } from '../components/PasswordRecovery';
+import { AnonymousLogin } from '../components/AnonymousLogin';
 import { apiService } from '../services/apiService';
 
 export const LoginPage: React.FC = () => {
@@ -30,6 +31,7 @@ export const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
+  const [showAnonymousLogin, setShowAnonymousLogin] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,6 +201,28 @@ export const LoginPage: React.FC = () => {
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
 
+            {/* Anonymous Login Button */}
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              onClick={() => setShowAnonymousLogin(true)}
+              sx={{
+                mt: 2,
+                mb: 2,
+                minHeight: { xs: 48, md: 44 },
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                '&:hover': {
+                  borderColor: 'primary.dark',
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                }
+              }}
+            >
+              Start Anonymous Conversation
+            </Button>
+
             {/* Footer Links */}
             <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -249,6 +273,12 @@ export const LoginPage: React.FC = () => {
         open={showRecovery}
         onClose={() => setShowRecovery(false)}
         onRecoveryComplete={handleRecoveryComplete}
+      />
+
+      {/* Anonymous Login Dialog */}
+      <AnonymousLogin
+        open={showAnonymousLogin}
+        onClose={() => setShowAnonymousLogin(false)}
       />
     </Box>
   );

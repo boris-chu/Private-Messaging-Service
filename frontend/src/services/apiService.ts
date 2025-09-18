@@ -88,6 +88,41 @@ class APIService {
     return response.json();
   }
 
+  async anonymousLogin(userData: {
+    username: string;
+    displayName: string;
+    sessionId: string;
+  }) {
+    const response = await this.makeRequest('/auth/anonymous', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Anonymous login failed');
+    }
+
+    return response.json();
+  }
+
+  async anonymousLogout(sessionData: {
+    username: string;
+    sessionId: string;
+  }) {
+    const response = await this.makeRequest('/auth/anonymous/logout', {
+      method: 'POST',
+      body: JSON.stringify(sessionData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Anonymous logout failed');
+    }
+
+    return response.json();
+  }
+
   // User management endpoints
   async getUser(username: string) {
     const response = await this.makeRequest(`/users/${username}`);
@@ -95,6 +130,69 @@ class APIService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'User lookup failed');
+    }
+
+    return response.json();
+  }
+
+  async checkUsernameAvailability(username: string) {
+    const response = await this.makeRequest(`/users/check-availability/${encodeURIComponent(username)}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Username check failed');
+    }
+
+    return response.json();
+  }
+
+  async reserveUsername(reservationData: {
+    username: string;
+    sessionId: string;
+    displayName: string;
+  }) {
+    const response = await this.makeRequest('/users/reserve', {
+      method: 'POST',
+      body: JSON.stringify(reservationData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Username reservation failed');
+    }
+
+    return response.json();
+  }
+
+  async releaseUsername(releaseData: {
+    username: string;
+    sessionId: string;
+  }) {
+    const response = await this.makeRequest('/users/release', {
+      method: 'POST',
+      body: JSON.stringify(releaseData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Username release failed');
+    }
+
+    return response.json();
+  }
+
+  async heartbeatSession(sessionData: {
+    username: string;
+    sessionId: string;
+  }) {
+    const response = await this.makeRequest('/users/heartbeat', {
+      method: 'POST',
+      body: JSON.stringify(sessionData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Session heartbeat failed');
     }
 
     return response.json();
@@ -179,4 +277,21 @@ export interface APIError {
   error: string;
   message?: string;
   timestamp?: string;
+}
+
+export interface UsernameAvailabilityResponse {
+  available: boolean;
+  username: string;
+  message?: string;
+}
+
+export interface AnonymousLoginResponse {
+  success: boolean;
+  sessionToken: string;
+  user: {
+    username: string;
+    displayName: string;
+    isAnonymous: boolean;
+    sessionId: string;
+  };
 }
