@@ -70,7 +70,7 @@ class MessageService {
       this.updateEncryptionState('partial-encryption');
     } catch (error) {
       console.error('Encryption initialization failed:', error);
-      this.updateEncryptionState('error', { error: error.message });
+      this.updateEncryptionState('error', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
 
@@ -168,7 +168,7 @@ class MessageService {
         isRead: false,
         readBy: [],
         isEncrypted: true,
-        encryptionError: error.message
+        encryptionError: error instanceof Error ? error.message : 'Decryption failed'
       };
 
       this.config.onMessageReceived(message);

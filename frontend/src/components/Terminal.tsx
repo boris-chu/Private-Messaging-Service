@@ -35,8 +35,6 @@ export const Terminal: React.FC<TerminalProps> = ({
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [terminalSize, setTerminalSize] = useState({ cols: 80, rows: 24 });
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
-  const [encryptionState, setEncryptionState] = useState<EncryptionState>('no-encryption');
-  const [encryptedUserCount, setEncryptedUserCount] = useState(0);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -333,9 +331,6 @@ export const Terminal: React.FC<TerminalProps> = ({
         showPrompt();
       },
       onEncryptionStateChange: (state: EncryptionState, details?: any) => {
-        setEncryptionState(state);
-        setEncryptedUserCount(details?.encryptedUserCount || 0);
-
         // Show encryption status updates in terminal
         switch (state) {
           case 'initializing':

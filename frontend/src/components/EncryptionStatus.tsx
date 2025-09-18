@@ -10,7 +10,6 @@ import {
 } from '@mui/material';
 import {
   Security,
-  Lock,
   LockOpen,
   Key,
   VerifiedUser,
@@ -19,8 +18,6 @@ import {
 } from '@mui/icons-material';
 import HttpsOutlinedIcon from '@mui/icons-material/HttpsOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import VpnLockOutlinedIcon from '@mui/icons-material/VpnLockOutlined';
-import PrivateConnectivityOutlinedIcon from '@mui/icons-material/PrivateConnectivityOutlined';
 import PrivateConnectivityRoundedIcon from '@mui/icons-material/PrivateConnectivityRounded';
 
 export type EncryptionState =
@@ -36,7 +33,6 @@ interface EncryptionStatusProps {
   state: EncryptionState;
   encryptedUserCount?: number;
   totalUserCount?: number;
-  currentUser?: string;
   error?: string;
   compact?: boolean;
 }
@@ -45,7 +41,6 @@ export const EncryptionStatus: React.FC<EncryptionStatusProps> = ({
   state,
   encryptedUserCount = 0,
   totalUserCount = 0,
-  currentUser,
   error,
   compact = false
 }) => {

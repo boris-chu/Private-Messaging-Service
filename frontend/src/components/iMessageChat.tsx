@@ -201,7 +201,6 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
               state={encryptionState}
               encryptedUserCount={encryptedUserCount}
               totalUserCount={onlineUsers.length}
-              currentUser={currentUser.username}
               compact={false}
             />
           </Box>
