@@ -124,27 +124,60 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
 }
 
 async function handleWebSocket(request: Request, env: Env): Promise<Response> {
-  const [client, server] = Object.values(new WebSocketPair());
+  try {
+    const [client, server] = Object.values(new WebSocketPair());
 
-  server.accept();
+    // Extract user agent for mobile detection
+    const userAgent = request.headers.get('User-Agent') || '';
+    const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(userAgent);
 
-  // Get connection manager for this session
-  const connectionId = env.CONNECTIONS.idFromName('global');
-  const connectionObject = env.CONNECTIONS.get(connectionId);
+    // Get client IP for logging
+    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
 
-  // Pass WebSocket to Durable Object for management
-  await connectionObject.fetch('http://connection/websocket', {
-    headers: {
-      'Upgrade': 'websocket',
-    },
-    // @ts-ignore - Cloudflare Workers WebSocket handling
-    webSocket: server,
-  });
+    console.log(`WebSocket connection attempt - IP: ${clientIP}, Mobile: ${isMobile}, UA: ${userAgent.substring(0, 100)}`);
 
-  return new Response(null, {
-    status: 101,
-    webSocket: client,
-  });
+    // Accept the WebSocket connection
+    server.accept();
+
+    // Set up error handling for the server WebSocket
+    server.addEventListener('error', (error) => {
+      console.error('Server WebSocket error:', error);
+    });
+
+    server.addEventListener('close', (event) => {
+      console.log(`Server WebSocket closed: code=${event.code}, reason=${event.reason}, clean=${event.wasClean}`);
+    });
+
+    // Get connection manager for this session
+    const connectionId = env.CONNECTIONS.idFromName('global');
+    const connectionObject = env.CONNECTIONS.get(connectionId);
+
+    // Pass WebSocket to Durable Object for management with error handling
+    try {
+      await connectionObject.fetch('http://connection/websocket', {
+        headers: {
+          'Upgrade': 'websocket',
+          'User-Agent': userAgent,
+          'CF-Connecting-IP': clientIP,
+          'X-Is-Mobile': isMobile.toString(),
+        },
+        // @ts-ignore - Cloudflare Workers WebSocket handling
+        webSocket: server,
+      });
+    } catch (durableObjectError) {
+      console.error('Durable Object WebSocket handling failed:', durableObjectError);
+      server.close(1011, 'Server error in connection handling');
+      return new Response('WebSocket handler error', { status: 500 });
+    }
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
+  } catch (error) {
+    console.error('WebSocket setup failed:', error);
+    return new Response('WebSocket upgrade failed', { status: 500 });
+  }
 }
 
 async function handleUserRegistration(request: Request, env: Env): Promise<Response> {

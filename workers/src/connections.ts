@@ -32,35 +32,66 @@ export class ConnectionManager {
       return new Response('Expected WebSocket', { status: 400 });
     }
 
-    webSocket.accept();
+    // Extract connection metadata
+    const userAgent = request.headers.get('User-Agent') || '';
+    const isMobile = request.headers.get('X-Is-Mobile') === 'true';
+    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
 
     const connectionId = crypto.randomUUID();
-    this.connections.set(connectionId, webSocket);
 
-    console.log(`New WebSocket connection: ${connectionId}`);
+    console.log(`New WebSocket connection: ${connectionId} - IP: ${clientIP}, Mobile: ${isMobile}`);
 
-    // Set up event listeners
-    webSocket.addEventListener('message', (event) => {
-      this.handleMessage(connectionId, event.data);
-    });
+    try {
+      // Accept the WebSocket connection
+      webSocket.accept();
 
-    webSocket.addEventListener('close', () => {
-      this.handleDisconnection(connectionId);
-    });
+      // Store connection with metadata
+      this.connections.set(connectionId, webSocket);
 
-    webSocket.addEventListener('error', (error) => {
-      console.error(`WebSocket error for ${connectionId}:`, error);
-      this.handleDisconnection(connectionId);
-    });
+      // Set up event listeners with mobile-specific handling
+      webSocket.addEventListener('message', (event) => {
+        this.handleMessage(connectionId, event.data);
+      });
 
-    // Send welcome message
-    this.sendToConnection(connectionId, {
-      type: 'welcome',
-      connectionId,
-      timestamp: new Date().toISOString()
-    });
+      webSocket.addEventListener('close', (event) => {
+        console.log(`WebSocket ${connectionId} closed: code=${event.code}, reason=${event.reason || 'No reason'}, clean=${event.wasClean}, mobile=${isMobile}`);
+        this.handleDisconnection(connectionId);
+      });
 
-    return new Response(null, { status: 101 });
+      webSocket.addEventListener('error', (error) => {
+        console.error(`WebSocket error for ${connectionId} (mobile: ${isMobile}):`, error);
+        this.handleDisconnection(connectionId);
+      });
+
+      // Send welcome message with connection info
+      this.sendToConnection(connectionId, {
+        type: 'connection_status',
+        data: {
+          status: 'connected',
+          connectionId,
+          isMobile,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      // For mobile connections, send a ping immediately to test stability
+      if (isMobile) {
+        setTimeout(() => {
+          if (this.connections.has(connectionId)) {
+            this.sendToConnection(connectionId, {
+              type: 'ping',
+              timestamp: new Date().toISOString()
+            });
+          }
+        }, 1000);
+      }
+
+      return new Response(null, { status: 101 });
+    } catch (error) {
+      console.error(`Failed to setup WebSocket ${connectionId}:`, error);
+      this.connections.delete(connectionId);
+      return new Response('WebSocket setup failed', { status: 500 });
+    }
   }
 
   private handleMessage(connectionId: string, data: string): void {
@@ -69,8 +100,33 @@ export class ConnectionManager {
       console.log(`Message from ${connectionId}:`, message);
 
       switch (message.type) {
+        case 'auth':
+          this.handleAuthentication(connectionId, message);
+          break;
         case 'authenticate':
           this.handleAuthentication(connectionId, message);
+          break;
+        case 'message':
+          this.relayMessage(connectionId, message);
+          break;
+        case 'encrypted_message':
+          this.relayEncryptedMessage(connectionId, message);
+          break;
+        case 'user_list_request':
+          this.handleUserListRequest(connectionId);
+          break;
+        case 'public_key_exchange':
+          this.relayPublicKeyExchange(connectionId, message);
+          break;
+        case 'public_key_request':
+          this.relayPublicKeyRequest(connectionId, message);
+          break;
+        case 'ping':
+          this.handlePing(connectionId);
+          break;
+        case 'pong':
+          // Handle pong response
+          console.log(`Received pong from ${connectionId}`);
           break;
         case 'connect_request':
           this.handleConnectionRequest(connectionId, message);
@@ -78,14 +134,12 @@ export class ConnectionManager {
         case 'accept_connection':
           this.handleConnectionAcceptance(connectionId, message);
           break;
-        case 'encrypted_message':
-          this.relayEncryptedMessage(connectionId, message);
-          break;
-        case 'ping':
-          this.handlePing(connectionId);
-          break;
         default:
-          console.warn(`Unknown message type: ${message.type}`);
+          console.warn(`Unknown message type: ${message.type} from ${connectionId}`);
+          this.sendToConnection(connectionId, {
+            type: 'error',
+            data: { error: `Unknown message type: ${message.type}` }
+          });
       }
     } catch (error) {
       console.error('Error handling message:', error);
@@ -97,12 +151,13 @@ export class ConnectionManager {
   }
 
   private handleAuthentication(connectionId: string, message: any): void {
-    const { username } = message;
+    const { data, username: directUsername } = message;
+    const username = data?.username || directUsername || data?.token;
 
     if (!username) {
       this.sendToConnection(connectionId, {
-        type: 'auth_error',
-        error: 'Username required'
+        type: 'error',
+        data: { error: 'Username or token required for authentication' }
       });
       return;
     }
@@ -112,15 +167,19 @@ export class ConnectionManager {
     this.connectionUsers.set(connectionId, username);
 
     this.sendToConnection(connectionId, {
-      type: 'authenticated',
-      username,
-      success: true
+      type: 'connection_status',
+      data: {
+        status: 'connected',
+        authenticated: true,
+        username
+      }
     });
 
-    // Broadcast user online status
+    // Broadcast user joined event
     this.broadcastToOthers(connectionId, {
-      type: 'user_online',
-      username
+      type: 'user_joined',
+      data: { user: username },
+      timestamp: Date.now()
     });
 
     console.log(`User ${username} authenticated on connection ${connectionId}`);
@@ -234,14 +293,95 @@ export class ConnectionManager {
     });
   }
 
+  private relayMessage(connectionId: string, message: any): void {
+    const sender = this.connectionUsers.get(connectionId);
+    if (!sender) {
+      this.sendToConnection(connectionId, {
+        type: 'error',
+        data: { error: 'Not authenticated' }
+      });
+      return;
+    }
+
+    // Broadcast message to all connected users
+    this.broadcastToOthers(connectionId, {
+      type: 'message',
+      data: {
+        content: message.data?.content,
+        recipient: message.data?.recipient
+      },
+      sender,
+      timestamp: Date.now()
+    });
+  }
+
+  private handleUserListRequest(connectionId: string): void {
+    const users = Array.from(this.connectionUsers.values());
+    this.sendToConnection(connectionId, {
+      type: 'user_list',
+      data: { users },
+      timestamp: Date.now()
+    });
+  }
+
+  private relayPublicKeyExchange(connectionId: string, message: any): void {
+    const sender = this.connectionUsers.get(connectionId);
+    if (!sender) {
+      this.sendToConnection(connectionId, {
+        type: 'error',
+        data: { error: 'Not authenticated' }
+      });
+      return;
+    }
+
+    // Broadcast public key to all other users
+    this.broadcastToOthers(connectionId, {
+      type: 'public_key_exchange',
+      data: { publicKey: message.data?.publicKey },
+      sender,
+      timestamp: Date.now()
+    });
+  }
+
+  private relayPublicKeyRequest(connectionId: string, message: any): void {
+    const sender = this.connectionUsers.get(connectionId);
+    const targetUsername = message.data?.username;
+
+    if (!sender) {
+      this.sendToConnection(connectionId, {
+        type: 'error',
+        data: { error: 'Not authenticated' }
+      });
+      return;
+    }
+
+    if (!targetUsername) {
+      this.sendToConnection(connectionId, {
+        type: 'error',
+        data: { error: 'Target username required' }
+      });
+      return;
+    }
+
+    const targetConnectionId = this.userConnections.get(targetUsername);
+    if (targetConnectionId) {
+      this.sendToConnection(targetConnectionId, {
+        type: 'public_key_request',
+        sender,
+        timestamp: Date.now()
+      });
+    }
+  }
+
   private handleDisconnection(connectionId: string): void {
     const username = this.connectionUsers.get(connectionId);
 
     if (username) {
-      // Broadcast user offline status
+      // Broadcast user left event
       this.broadcastToOthers(connectionId, {
-        type: 'user_offline',
-        username
+        type: 'user_left',
+        data: { user: username },
+        timestamp: Date.now()
       });
 
       // Clean up mappings
