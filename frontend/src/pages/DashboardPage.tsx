@@ -1,124 +1,272 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Typography,
   Container,
-  Card,
-  CardContent,
-  Button,
+  Typography,
+  Paper,
   AppBar,
   Toolbar,
   IconButton,
+  Menu,
+  MenuItem,
+  Avatar,
+  Chip,
+  Grid,
+  Card,
+  CardContent,
+  Fade
 } from '@mui/material';
 import {
-  Terminal as TerminalIcon,
-  Logout as LogoutIcon,
-  Settings as SettingsIcon,
+  AccountCircle,
+  Logout,
+  Settings,
+  Security,
+  People,
+  Message
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { Terminal } from '../components/Terminal';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [user, setUser] = useState<any>(null);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (!userData) {
+      navigate('/login');
+      return;
+    }
+    setUser(JSON.parse(userData));
+  }, [navigate]);
+
+  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
     navigate('/login');
   };
 
-  const openTerminal = () => {
-    navigate('/terminal');
+  const handleConnect = () => {
+    console.log('Connecting to WebSocket...');
+    setConnected(true);
   };
 
+  const handleCommand = (command: string) => {
+    console.log('Command executed:', command);
+  };
+
+  if (!user) {
+    return null;
+  }
+
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: '#f5f5f5' }}>
       {/* App Bar */}
-      <AppBar position="static" elevation={0}>
+      <AppBar position="static" sx={{ bgcolor: '#0d1117' }}>
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            SecureMsg Dashboard
+          <Security sx={{ mr: 2, color: '#00d4aa' }} />
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            SecureMsg
           </Typography>
-          <IconButton color="inherit">
-            <SettingsIcon />
-          </IconButton>
-          <IconButton color="inherit" onClick={handleLogout}>
-            <LogoutIcon />
-          </IconButton>
+
+          {/* Connection Status */}
+          <Chip
+            icon={connected ? <Security /> : <Security />}
+            label={connected ? "Connected" : "Disconnected"}
+            color={connected ? "success" : "error"}
+            variant="outlined"
+            size="small"
+            sx={{ mr: 2 }}
+          />
+
+          {/* User Menu */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" sx={{ color: '#c9d1d9' }}>
+              {user.fullName || user.username}
+            </Typography>
+            <IconButton
+              size="large"
+              onClick={handleMenu}
+              color="inherit"
+            >
+              <Avatar sx={{ width: 32, height: 32, bgcolor: '#00d4aa' }}>
+                {(user.fullName || user.username).charAt(0).toUpperCase()}
+              </Avatar>
+            </IconButton>
+          </Box>
+
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleClose}
+            sx={{ mt: '45px' }}
+          >
+            <MenuItem onClick={handleClose}>
+              <AccountCircle sx={{ mr: 1 }} />
+              Profile
+            </MenuItem>
+            <MenuItem onClick={handleClose}>
+              <Settings sx={{ mr: 1 }} />
+              Settings
+            </MenuItem>
+            <MenuItem onClick={handleLogout}>
+              <Logout sx={{ mr: 1 }} />
+              Logout
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 
       {/* Main Content */}
-      <Container maxWidth="md" sx={{ flexGrow: 1, py: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Welcome to SecureMsg
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          Your secure messaging platform is ready. Start by opening the terminal interface
-          to connect with your colleagues.
-        </Typography>
-
-        <Card sx={{ mt: 4 }}>
-          <CardContent sx={{ textAlign: 'center', p: 4 }}>
-            <TerminalIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h5" gutterBottom>
-              Terminal Interface
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Access the secure messaging terminal with end-to-end encryption
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<TerminalIcon />}
-              onClick={openTerminal}
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Fade in timeout={800}>
+          <Box>
+            {/* Welcome Section */}
+            <Paper
+              elevation={2}
               sx={{
-                mt: 2,
-                px: 4,
-                py: 1.5,
-                fontSize: '1.1rem',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 25px rgba(0, 212, 170, 0.4)',
-                }
+                p: 3,
+                mb: 4,
+                bgcolor: 'white',
+                borderRadius: 2
               }}
             >
-              Open Terminal
-            </Button>
-          </CardContent>
-        </Card>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Security sx={{ fontSize: 32, color: '#00d4aa' }} />
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                    Welcome, {user.fullName || user.username}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    Secure messaging terminal ready for encrypted communication
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
 
-        {/* Quick Stats */}
-        <Box sx={{ mt: 4, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" color="primary">
-                0
+            {/* Stats Cards */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <People sx={{ fontSize: 40, color: '#219ebc' }} />
+                      <Box>
+                        <Typography variant="h6">Online Users</Typography>
+                        <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                          {connected ? '3' : '0'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Card elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Message sx={{ fontSize: 40, color: '#00d4aa' }} />
+                      <Box>
+                        <Typography variant="h6">Messages</Typography>
+                        <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                          12
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Card elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Security sx={{ fontSize: 40, color: '#8b5cf6' }} />
+                      <Box>
+                        <Typography variant="h6">Encryption</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#00d4aa' }}>
+                          AES-256
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Card elevation={2}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Box
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '50%',
+                          bgcolor: connected ? '#28ca42' : '#ff5f57',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            bgcolor: 'white'
+                          }}
+                        />
+                      </Box>
+                      <Box>
+                        <Typography variant="h6">Status</Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: connected ? '#28ca42' : '#ff5f57'
+                          }}
+                        >
+                          {connected ? 'Connected' : 'Offline'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            {/* Terminal Section */}
+            <Paper
+              elevation={2}
+              sx={{
+                p: 3,
+                bgcolor: 'white',
+                borderRadius: 2
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Security sx={{ color: '#00d4aa' }} />
+                Secure Terminal
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Active Connections
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" color="primary">
-                0
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Messages Today
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" color="success.main">
-                Online
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Status
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
+              <Terminal
+                connected={connected}
+                onConnect={handleConnect}
+                onCommand={handleCommand}
+              />
+            </Paper>
+          </Box>
+        </Fade>
       </Container>
     </Box>
   );

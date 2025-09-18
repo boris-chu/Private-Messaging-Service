@@ -8,9 +8,9 @@ bindings = [
   { name = "CONNECTIONS", class_name = "ConnectionManager" }
 ]
 
-[[durable_objects.migrations]]
+[[migrations]]
 tag = "v1"
-new_classes = ["SessionManager", "ConnectionManager"]
+new_sqlite_classes = ["SessionManager", "ConnectionManager"]
 
 [vars]
 ENVIRONMENT = "development"
