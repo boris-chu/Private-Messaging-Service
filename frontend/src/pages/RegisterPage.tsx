@@ -177,9 +177,6 @@ export const RegisterPage: React.FC = () => {
 
       const response = await apiService.register({
         username: formData.username,
-        email: `${formData.username}@axol.local`, // Temporary email
-        fullName: formData.username, // Use username as display name
-        company: 'Private User', // Default company
         password: formData.password,
       });
 

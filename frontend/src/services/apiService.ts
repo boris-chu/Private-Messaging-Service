@@ -38,10 +38,10 @@ class APIService {
   // Authentication endpoints
   async register(userData: {
     username: string;
-    email: string;
-    fullName: string;
-    company: string;
     password: string;
+    email?: string;
+    fullName?: string;
+    company?: string;
     turnstileToken?: string;
   }) {
     const response = await this.makeRequest('/auth/register', {
