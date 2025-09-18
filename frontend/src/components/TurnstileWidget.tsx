@@ -5,6 +5,7 @@ interface TurnstileAPI {
     sitekey: string;
     callback?: (token: string) => void;
     'error-callback'?: () => void;
+    'expired-callback'?: () => void;
     theme?: string;
     size?: string;
   }) => string;
