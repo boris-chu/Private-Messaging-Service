@@ -346,7 +346,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           // WebSocket info
           terminal.writeln('\x1b[1;36mConnection:\x1b[0m');
           terminal.writeln(`  Connection Status: ${messageService.isConnected ? 'Connected' : 'Disconnected'}`);
-          terminal.writeln(`  WebSocket URL: ${import.meta.env.PROD ? 'wss://api.axolchat.com/ws' : 'ws://localhost:8080/ws'}`);
+          terminal.writeln(`  WebSocket URL: ${import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev'}`);
 
           // Try to get more WebSocket details
           try {
@@ -379,12 +379,25 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('\x1b[33mTesting connectivity...\x1b[0m');
 
           // Test fetch to the API
-          fetch(import.meta.env.PROD ? 'https://api.axolchat.com/health' : 'http://localhost:8080/health')
+          const apiUrl = (import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev').replace('wss://', 'https://').replace('ws://', 'http://');
+
+          // Try health endpoint first
+          fetch(apiUrl + '/health')
             .then(response => {
               terminal.writeln(`  API Health Check: ${response.ok ? '\x1b[32mOK\x1b[0m' : '\x1b[31mFailed\x1b[0m'} (${response.status})`);
             })
             .catch(error => {
               terminal.writeln(`  API Health Check: \x1b[31mFailed\x1b[0m - ${error.message}`);
+
+              // Try base URL as fallback
+              return fetch(apiUrl)
+                .then(response => {
+                  terminal.writeln(`  Base API Check: ${response.ok ? '\x1b[32mOK\x1b[0m' : '\x1b[31mFailed\x1b[0m'} (${response.status})`);
+                })
+                .catch(baseError => {
+                  terminal.writeln(`  Base API Check: \x1b[31mFailed\x1b[0m - ${baseError.message}`);
+                  terminal.writeln(`  \x1b[90mTrying: ${apiUrl}\x1b[0m`);
+                });
             })
             .finally(() => {
               terminal.writeln('');
