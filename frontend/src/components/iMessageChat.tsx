@@ -5,7 +5,6 @@ import {
   IconButton,
   Paper,
   Typography,
-  Avatar,
   Chip,
   List,
   ListItem
@@ -13,10 +12,10 @@ import {
 import {
   Send,
   Circle,
-  Person,
   DoneAll
 } from '@mui/icons-material';
-import { messageService, Message, MessageStatus } from '../services/messageService';
+import { messageService } from '../services/messageService';
+import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface iMessageChatProps {

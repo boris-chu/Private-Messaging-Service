@@ -9,22 +9,16 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Avatar,
-  Chip,
-  Card,
-  CardContent,
   Fade,
 } from '@mui/material';
 import {
-  AccountCircle,
   Logout,
   Settings,
-  Security,
   People
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { Terminal } from '../components/Terminal';
-import { iMessageChat } from '../components/iMessageChat';
+import { iMessageChat as IMessageChat } from '../components/iMessageChat';
 import { SettingsModal } from '../components/SettingsModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { websocketService } from '../services/websocketService';
@@ -187,7 +181,7 @@ export const DashboardPage: React.FC = () => {
                   onCommand={handleCommand}
                 />
               ) : (
-                <iMessageChat
+                <IMessageChat
                   connected={connected}
                   onConnect={handleConnect}
                 />

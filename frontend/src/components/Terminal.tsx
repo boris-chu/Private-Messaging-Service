@@ -11,8 +11,8 @@ import {
   ZoomOut
 } from '@mui/icons-material';
 import '@xterm/xterm/css/xterm.css';
-import { websocketService } from '../services/websocketService';
-import { messageService, Message, MessageStatus } from '../services/messageService';
+import { messageService } from '../services/messageService';
+import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface TerminalProps {
@@ -272,50 +272,6 @@ export const Terminal: React.FC<TerminalProps> = ({
       onCommand?.(command);
     }
 
-    // Fit terminal to container (only when needed)
-    const handleResize = () => {
-      if (fitAddonRef.current && isFullscreen) {
-        fitAddonRef.current.fit();
-      }
-    };
-
-    // WebSocket event listeners
-    const handleMessage = (data: any) => {
-      const timestamp = new Date(data.timestamp).toLocaleTimeString();
-      terminal.writeln(`\x1b[34m[${timestamp}]\x1b[0m \x1b[36m${data.sender}\x1b[0m: ${data.content}`);
-      showPrompt();
-    };
-
-    const handleUserJoined = (data: any) => {
-      terminal.writeln(`\x1b[32m[SYSTEM]\x1b[0m User \x1b[36m${data.user}\x1b[0m joined the chat`);
-      setOnlineUsers(prev => [...prev.filter(u => u !== data.user), data.user]);
-      showPrompt();
-    };
-
-    const handleUserLeft = (data: any) => {
-      terminal.writeln(`\x1b[33m[SYSTEM]\x1b[0m User \x1b[36m${data.user}\x1b[0m left the chat`);
-      setOnlineUsers(prev => prev.filter(u => u !== data.user));
-      showPrompt();
-    };
-
-    const handleUserList = (data: any) => {
-      setOnlineUsers(data.users || []);
-    };
-
-    const handleConnectionStatus = (data: any) => {
-      if (data.status === 'connected') {
-        terminal.writeln('\x1b[32m[SYSTEM]\x1b[0m WebSocket connection established');
-      } else if (data.status === 'disconnected') {
-        terminal.writeln('\x1b[31m[SYSTEM]\x1b[0m WebSocket connection lost');
-        setOnlineUsers([]);
-      }
-      showPrompt();
-    };
-
-    const handleError = (data: any) => {
-      terminal.writeln(`\x1b[31m[ERROR]\x1b[0m ${data.error}`);
-      showPrompt();
-    };
 
     // Initialize message service for terminal
     messageService.initialize({

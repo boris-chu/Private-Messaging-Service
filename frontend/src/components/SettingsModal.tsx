@@ -6,7 +6,6 @@ import {
   DialogActions,
   Button,
   FormControl,
-  FormLabel,
   RadioGroup,
   FormControlLabel,
   Radio,
@@ -20,7 +19,8 @@ import {
   ListItemSecondaryAction
 } from '@mui/material';
 import { Terminal, Chat, Visibility, MarkEmailRead } from '@mui/icons-material';
-import { useTheme, ChatTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
+import type { ChatTheme } from '../contexts/ThemeContext';
 
 interface SettingsModalProps {
   open: boolean;
