@@ -9,7 +9,9 @@ export class ConnectionManager {
   }
 
   async fetch(request: Request): Promise<Response> {
+    console.log(`🟢 CONNECTION_DO: fetch called with URL: ${request.url}`);
     if (request.headers.get('Upgrade') === 'websocket') {
+      console.log(`🟢 CONNECTION_DO: WebSocket upgrade detected, handling connection`);
       return this.handleWebSocketConnection(request);
     }
 

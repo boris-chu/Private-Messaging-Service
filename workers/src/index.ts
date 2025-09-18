@@ -144,10 +144,11 @@ async function handleWebSocket(request: Request, env: Env): Promise<Response> {
     // Get client IP for logging
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
 
-    console.log(`WebSocket connection attempt - IP: ${clientIP}, Mobile: ${isMobile}, UA: ${userAgent.substring(0, 100)}`);
+    console.log(`🟢 MAIN: WebSocket connection attempt - IP: ${clientIP}, Mobile: ${isMobile}, UA: ${userAgent.substring(0, 100)}`);
 
     // Accept the WebSocket connection
     server.accept();
+    console.log(`🟢 MAIN: WebSocket accepted, about to pass to Durable Object`);
 
     // Set up error handling for the server WebSocket
     server.addEventListener('error', (error) => {
@@ -159,11 +160,14 @@ async function handleWebSocket(request: Request, env: Env): Promise<Response> {
     });
 
     // Get connection manager for this session
+    console.log(`🟢 MAIN: Getting connection manager Durable Object`);
     const connectionId = env.CONNECTIONS.idFromName('global');
     const connectionObject = env.CONNECTIONS.get(connectionId);
+    console.log(`🟢 MAIN: Got connection object, making fetch call`);
 
     // Pass WebSocket to Durable Object for management with error handling
     try {
+      console.log(`🟢 MAIN: About to call connectionObject.fetch`);
       await connectionObject.fetch('http://connection/websocket', {
         headers: {
           'Upgrade': 'websocket',
@@ -174,8 +178,9 @@ async function handleWebSocket(request: Request, env: Env): Promise<Response> {
         // @ts-ignore - Cloudflare Workers WebSocket handling
         webSocket: server,
       });
+      console.log(`🟢 MAIN: connectionObject.fetch completed successfully`);
     } catch (durableObjectError) {
-      console.error('Durable Object WebSocket handling failed:', durableObjectError);
+      console.error('🔴 MAIN: Durable Object WebSocket handling failed:', durableObjectError);
       server.close(1011, 'Server error in connection handling');
       return new Response('WebSocket handler error', { status: 500 });
     }
