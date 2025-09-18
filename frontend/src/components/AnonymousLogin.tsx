@@ -35,7 +35,7 @@ import {
   cleanUsername,
   type AnonymousUser
 } from '../utils/anonymousUserGenerator';
-// import { apiService } from '../services/apiService'; // Disabled for demo mode
+import { apiService } from '../services/apiService';
 import { anonymousSessionManager } from '../utils/anonymousSessionManager';
 
 interface AnonymousLoginProps {
@@ -73,10 +73,19 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
         newUser = generateAnonymousUser();
         attempts++;
 
-        // For demo mode, assume all generated usernames are available
-        // In production, this would check against the backend API
-        console.log(`Generated username (demo mode): ${newUser.username}`);
-        break;
+        try {
+          // Check username availability with backend
+          const availabilityResponse = await apiService.checkUsernameAvailability(newUser.username);
+          if (availabilityResponse.available) {
+            console.log(`Generated username: ${newUser.username}`);
+            break;
+          } else {
+            console.log(`Username ${newUser.username} is taken, generating another...`);
+          }
+        } catch (error) {
+          console.warn('Username availability check failed, proceeding with generated username:', error);
+          break;
+        }
       } while (attempts < 5);
 
       const options = generateUsernameOptions(5);
@@ -136,11 +145,14 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
     try {
       console.log('Starting anonymous login process...', anonymousUser);
 
-      // For now, skip API calls and work in demo mode
-      // This allows the frontend to function while backend anonymous endpoints are being developed
-      console.log('Working in demo mode - skipping API calls');
+      // Authenticate with backend API
+      const authResponse = await apiService.anonymousLogin({
+        username: anonymousUser.username,
+        displayName: anonymousUser.displayName,
+        sessionId: anonymousUser.sessionId
+      });
 
-      // Start session with session manager (offline mode)
+      // Start session with session manager
       console.log('Starting session with session manager...');
       await anonymousSessionManager.startSession(
         anonymousUser.username,
@@ -148,8 +160,8 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
         anonymousUser.sessionId
       );
 
-      // Store user data for compatibility (demo mode)
-      const demoUser = {
+      // Store user data with real authentication tokens
+      const authenticatedUser = {
         username: anonymousUser.username,
         displayName: anonymousUser.displayName,
         fullName: anonymousUser.displayName,
@@ -158,13 +170,13 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
       };
 
       // Store in both locations for compatibility
-      localStorage.setItem('anonymousUser', JSON.stringify(demoUser));
-      localStorage.setItem('user', JSON.stringify(demoUser));
+      localStorage.setItem('anonymousUser', JSON.stringify(authenticatedUser));
+      localStorage.setItem('user', JSON.stringify(authenticatedUser));
       localStorage.setItem('isAnonymousSession', 'true');
-      localStorage.setItem('sessionToken', `demo-token-${anonymousUser.sessionId}`);
-      localStorage.setItem('authToken', `demo-auth-${anonymousUser.sessionId}`);
+      localStorage.setItem('sessionToken', authResponse.sessionToken);
+      localStorage.setItem('authToken', authResponse.sessionToken); // Use sessionToken as authToken for anonymous users
 
-      console.log('Demo anonymous login successful, navigating to dashboard...');
+      console.log('Anonymous login successful, navigating to dashboard...');
 
       // Navigate to dashboard
       navigate('/dashboard');
@@ -377,15 +389,6 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
                 </Box>
               </Paper>
 
-              {/* Demo Mode Notice */}
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  Demo Mode
-                </Typography>
-                <Typography variant="body2">
-                  Currently running in demo mode. Anonymous login will work locally without backend authentication.
-                </Typography>
-              </Alert>
 
               {/* Privacy Notice */}
               <Alert severity="info" icon={<Security />} sx={{ mb: 2 }}>
