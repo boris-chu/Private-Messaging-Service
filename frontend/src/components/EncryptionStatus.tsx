@@ -10,7 +10,6 @@ import {
 } from '@mui/material';
 import {
   Security,
-  LockOpen,
   Key,
   VerifiedUser,
   Warning,
@@ -19,6 +18,7 @@ import {
 import HttpsOutlinedIcon from '@mui/icons-material/HttpsOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PrivateConnectivityRoundedIcon from '@mui/icons-material/PrivateConnectivityRounded';
+import NoEncryptionOutlinedIcon from '@mui/icons-material/NoEncryptionOutlined';
 
 export type EncryptionState =
   | 'initializing'
@@ -93,7 +93,7 @@ export const EncryptionStatus: React.FC<EncryptionStatusProps> = ({
 
       case 'no-encryption':
         return {
-          icon: <LockOpen sx={{ fontSize: 16, color: '#f44336' }} />,
+          icon: <NoEncryptionOutlinedIcon sx={{ fontSize: 16, color: '#f44336' }} />,
           color: 'error' as const,
           text: 'Not Encrypted',
           description: 'Messages are sent in plain text',
@@ -247,7 +247,7 @@ export const MessageEncryptionBadge: React.FC<MessageEncryptionBadgeProps> = ({
             opacity: 0.8
           }} />
         ) : (
-          <LockOpen sx={{
+          <NoEncryptionOutlinedIcon sx={{
             fontSize: iconSize,
             color: '#f44336',
             opacity: 0.6
