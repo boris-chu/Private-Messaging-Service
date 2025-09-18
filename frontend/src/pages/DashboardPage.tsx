@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -60,14 +60,14 @@ export const DashboardPage: React.FC = () => {
     navigate('/login');
   };
 
-  const handleConnect = () => {
+  const handleConnect = useCallback(() => {
     console.log('Connecting to WebSocket...');
     setConnected(websocketService.isConnected);
-  };
+  }, []);
 
-  const handleCommand = (command: string) => {
+  const handleCommand = useCallback((command: string) => {
     console.log('Command executed:', command);
-  };
+  }, []);
 
   // Listen for WebSocket connection changes
   useEffect(() => {

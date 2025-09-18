@@ -164,6 +164,8 @@ export const Terminal: React.FC<TerminalProps> = ({
       const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
       const status = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
       terminal.write(`${status} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
+      // Ensure cursor stays visible
+      setTimeout(() => terminal.scrollToBottom(), 10);
     }
 
     function handleCommand(command: string) {
@@ -193,7 +195,7 @@ export const Terminal: React.FC<TerminalProps> = ({
                 terminal.writeln('\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection established');
                 terminal.writeln('\x1b[32m[CRYPTO]\x1b[0m RSA-OAEP 2048-bit end-to-end encryption initialized');
                 messageService.requestUserList();
-                onConnect?.();
+                ((terminal as any)._onConnect || onConnect)?.();
               })
               .catch((error) => {
                 terminal.writeln(`\x1b[31m[ERROR]\x1b[0m Failed to connect: ${error.message}`);
@@ -319,7 +321,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           }
       }
 
-      onCommand?.(command);
+      ((terminal as any)._onCommand || onCommand)?.(command);
     }
 
 
@@ -427,7 +429,19 @@ export const Terminal: React.FC<TerminalProps> = ({
       window.removeEventListener('resize', handleResize);
       terminal.dispose();
     };
-  }, [connected, onCommand, onConnect]);
+  }, []); // Remove dependencies to prevent reinitialization
+
+  // Update callback references without reinitializing terminal
+  useEffect(() => {
+    // Store callback references for use in terminal functions
+    // This allows us to update callbacks without recreating the entire terminal
+    const currentTerminal = xtermRef.current;
+    if (currentTerminal) {
+      // Update internal callback references
+      (currentTerminal as any)._onCommand = onCommand;
+      (currentTerminal as any)._onConnect = onConnect;
+    }
+  }, [onCommand, onConnect]);
 
   // Watch for privacy settings changes and display in terminal
   useEffect(() => {
@@ -503,7 +517,7 @@ export const Terminal: React.FC<TerminalProps> = ({
         right: isFullscreen ? 0 : 'auto',
         bottom: isFullscreen ? 0 : 'auto',
         zIndex: isFullscreen ? 9999 : 'auto',
-        height: isFullscreen ? '100vh' : { xs: '500px', md: '600px', lg: '700px' }, // Increased heights
+        height: isFullscreen ? '100vh' : { xs: '600px', md: '750px', lg: '850px' }, // Increased heights for better scrolling
         width: isFullscreen ? '100vw' : '100%',
         bgcolor: '#0d1117',
         border: '1px solid #30363d',
