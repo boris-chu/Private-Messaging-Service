@@ -49,16 +49,16 @@ export class ConnectionManager {
       this.connections.set(connectionId, webSocket);
 
       // Set up event listeners with mobile-specific handling
-      webSocket.addEventListener('message', (event) => {
+      webSocket.addEventListener('message', (event: MessageEvent) => {
         this.handleMessage(connectionId, event.data);
       });
 
-      webSocket.addEventListener('close', (event) => {
+      webSocket.addEventListener('close', (event: CloseEvent) => {
         console.log(`WebSocket ${connectionId} closed: code=${event.code}, reason=${event.reason || 'No reason'}, clean=${event.wasClean}, mobile=${isMobile}`);
         this.handleDisconnection(connectionId);
       });
 
-      webSocket.addEventListener('error', (error) => {
+      webSocket.addEventListener('error', (error: Event) => {
         console.error(`WebSocket error for ${connectionId} (mobile: ${isMobile}):`, error);
         this.handleDisconnection(connectionId);
       });
@@ -440,7 +440,8 @@ export class ConnectionManager {
 
   private async broadcastMessage(request: Request): Promise<Response> {
     try {
-      const { message } = await request.json();
+      const body = await request.json() as { message?: unknown };
+      const { message } = body;
 
       this.connections.forEach((ws, connectionId) => {
         this.sendToConnection(connectionId, {

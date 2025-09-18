@@ -48,6 +48,7 @@ export default {
           users: '/api/v1/users/*',
           websocket: 'ws://*/api/v1/ws',
           anonymous: '/api/v1/auth/anonymous',
+          heartbeat: '/api/v1/users/heartbeat',
           availability: '/api/v1/users/check-availability/{username}'
         }
       }), {
@@ -90,6 +91,8 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
       return handleAnonymousLogin(request, env);
 
     // User management endpoints
+    case path === '/users/heartbeat':
+      return handleUserHeartbeat(request, env);
     case path.startsWith('/users/'):
       return handleUserLookup(request, env, path);
     case path === '/users':
@@ -115,6 +118,7 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
           '/api/v1/auth/login',
           '/api/v1/auth/anonymous',
           '/api/v1/users',
+          '/api/v1/users/heartbeat',
           '/api/v1/users/check-availability/{username}',
           '/api/v1/ws',
           '/api/v1/connections'
@@ -192,7 +196,15 @@ async function handleUserRegistration(request: Request, env: Env): Promise<Respo
   }
 
   try {
-    const { username, password, email, fullName, company, turnstileToken } = await request.json();
+    const body = await request.json() as {
+      username?: string;
+      password?: string;
+      email?: string;
+      fullName?: string;
+      company?: string;
+      turnstileToken?: string;
+    };
+    const { username, password, email, fullName, company, turnstileToken } = body;
 
     // Basic validation
     if (!username || !password) {
@@ -258,7 +270,12 @@ async function handleUserLogin(request: Request, env: Env): Promise<Response> {
   }
 
   try {
-    const { username, password, turnstileToken } = await request.json();
+    const body = await request.json() as {
+      username?: string;
+      password?: string;
+      turnstileToken?: string;
+    };
+    const { username, password, turnstileToken } = body;
 
     // For demo purposes, accept demo/demo credentials
     if (username === 'demo' && password === 'demo') {
@@ -338,6 +355,75 @@ async function handleUsersList(request: Request, env: Env): Promise<Response> {
   });
 }
 
+async function handleUserHeartbeat(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const body = await request.json() as { username?: string };
+    const { username } = body;
+
+    if (!username) {
+      return new Response(JSON.stringify({
+        error: 'Username required'
+      }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    // Update user's last seen timestamp in session manager
+    const sessionId = env.SESSIONS.idFromName('global');
+    const sessionObject = env.SESSIONS.get(sessionId);
+
+    // Check if user exists first
+    const userResponse = await sessionObject.fetch(`http://session/user?username=${username}`);
+
+    if (!userResponse.ok) {
+      return new Response(JSON.stringify({
+        error: 'User not found'
+      }), {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    // Update user status (this will update lastSeen timestamp)
+    await sessionObject.fetch('http://session/heartbeat', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    });
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Heartbeat recorded',
+      timestamp: new Date().toISOString()
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Heartbeat failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+}
+
 async function handleUserLogout(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
@@ -376,7 +462,12 @@ async function handleAnonymousLogin(request: Request, env: Env): Promise<Respons
   }
 
   try {
-    const { username, displayName, sessionId } = await request.json();
+    const body = await request.json() as {
+      username?: string;
+      displayName?: string;
+      sessionId?: string;
+    };
+    const { username, displayName, sessionId } = body;
 
     // Basic validation
     if (!username || !displayName || !sessionId) {
@@ -528,8 +619,8 @@ async function verifyTurnstileToken(token: string, ip: string, secretKey?: strin
       }),
     });
 
-    const result = await response.json();
-    return result.success;
+    const result = await response.json() as { success?: boolean };
+    return result.success ?? false;
   } catch (error) {
     console.error('Turnstile verification failed:', error);
     return false;

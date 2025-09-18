@@ -19,6 +19,8 @@ export class SessionManager {
         return this.getUser(request);
       case '/users':
         return this.getAllUsers();
+      case '/heartbeat':
+        return this.handleHeartbeat(request);
       default:
         return new Response('Not found', { status: 404 });
     }
@@ -26,7 +28,14 @@ export class SessionManager {
 
   private async registerUser(request: Request): Promise<Response> {
     try {
-      const { username, password, email, fullName, company } = await request.json();
+      const body = await request.json() as {
+        username?: string;
+        password?: string;
+        email?: string;
+        fullName?: string;
+        company?: string;
+      };
+      const { username, password, email, fullName, company } = body;
 
       // Basic validation
       if (!username || !password) {
@@ -48,11 +57,11 @@ export class SessionManager {
       }
 
       const userData: UserData = {
-        username,
-        password,
-        email,
-        fullName,
-        company,
+        username: username || '',
+        password: password || '',
+        email: email || `${username}@axol.local`,
+        fullName: fullName || username || '',
+        company: company || 'Private User',
         registeredAt: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
         status: 'offline'
@@ -139,7 +148,14 @@ export class SessionManager {
 
   private async registerAnonymousUser(request: Request): Promise<Response> {
     try {
-      const { username, displayName, sessionId, sessionToken, isAnonymous } = await request.json();
+      const body = await request.json() as {
+        username?: string;
+        displayName?: string;
+        sessionId?: string;
+        sessionToken?: string;
+        isAnonymous?: boolean;
+      };
+      const { username, displayName, sessionId, sessionToken, isAnonymous } = body;
 
       // Basic validation
       if (!username || !displayName || !sessionId) {
@@ -205,6 +221,56 @@ export class SessionManager {
       user.status = status;
       user.lastSeen = new Date().toISOString();
       await this.saveState();
+    }
+  }
+
+  private async handleHeartbeat(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    try {
+      const body = await request.json() as { username?: string };
+      const { username } = body;
+
+      if (!username) {
+        return new Response(JSON.stringify({
+          error: 'Username required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const user = this.users.get(username);
+      if (!user) {
+        return new Response(JSON.stringify({
+          error: 'User not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Update user's lastSeen timestamp
+      user.lastSeen = new Date().toISOString();
+      user.status = 'online'; // Ensure user is marked as online
+      await this.saveState();
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Heartbeat recorded',
+        lastSeen: user.lastSeen
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Heartbeat processing failed'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 }
