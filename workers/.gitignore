@@ -1,31 +1,24 @@
-# Frontend specific gitignore
+# Cloudflare Workers specific gitignore
 
 # Dependencies
 node_modules/
 /.pnp
 .pnp.js
 
-# Production builds
-/dist
-/build
-/.next/
-/out/
-dist-ssr
+# Cloudflare Workers specific
+.wrangler/
+/dist/
+/build/
+wrangler.toml.bak
 
-# Development
-.vite/
-.cache/
-.parcel-cache/
-
-# Testing
-/coverage
-
-# Environment variables
+# Environment and secrets
+.dev.vars
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-*.local
+*.vars
 
 # Debug logs
 logs
@@ -35,6 +28,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+# TypeScript
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*
@@ -55,17 +51,11 @@ lerna-debug.log*
 ehthumbs.db
 Thumbs.db
 
-# TypeScript
-*.tsbuildinfo
-
 # Optional npm cache directory
 .npm
 
 # Optional eslint cache
 .eslintcache
-
-# Optional stylelint cache
-.stylelintcache
 
 # Microbundle cache
 .rpt2_cache/
@@ -82,19 +72,13 @@ Thumbs.db
 # Yarn Integrity file
 .yarn-integrity
 
-# PWA files
-/public/sw.js
-/public/workbox-*.js
-/public/worker-*.js
-/public/sw.js.map
-/public/workbox-*.js.map
-/public/worker-*.js.map
-
-# Storybook build outputs
-.out
-.storybook-out
-storybook-static
-
 # Temporary folders
 tmp/
 temp/
+
+# Worker bundle
+worker.js
+worker.js.map
+
+# Miniflare cache
+.mf/
