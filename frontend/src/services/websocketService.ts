@@ -28,7 +28,7 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval = 1000;
-  private listeners: Map<string, Array<(data: any) => void>> = new Map();
+  private listeners: Map<string, Array<(data: unknown) => void>> = new Map();
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
   private authToken: string | null = null;
   private manualDisconnect = false; // Track if user manually disconnected
@@ -285,14 +285,14 @@ class WebSocketService {
   }
 
   // Event system
-  on(event: string, callback: (data: any) => void): void {
+  on(event: string, callback: (data: unknown) => void): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
     this.listeners.get(event)!.push(callback);
   }
 
-  off(event: string, callback: (data: any) => void): void {
+  off(event: string, callback: (data: unknown) => void): void {
     const eventListeners = this.listeners.get(event);
     if (eventListeners) {
       const index = eventListeners.indexOf(callback);

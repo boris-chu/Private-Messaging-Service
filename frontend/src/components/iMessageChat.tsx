@@ -201,6 +201,23 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Helper function to get message background color
+  const getMessageBackgroundColor = (message: Message) => {
+    if (message.isSelf) {
+      // Sent messages (user's own messages)
+      if (message.status === 'sending') {
+        return colors.sentMessageSending;
+      }
+      return colors.sentMessage;
+    } else {
+      // Received messages (from others)
+      if (message.isEncrypted || encryptionState === 'encrypted') {
+        return colors.receivedMessageEncrypted; // Light blue for encrypted
+      }
+      return colors.receivedMessage; // Regular gray for unencrypted
+    }
+  };
+
   // Theme-aware colors
   const isDark = colorMode === 'dark';
   const colors = {
@@ -217,6 +234,11 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
     text: isDark ? '#ffffff' : '#000000',
     textSecondary: isDark ? '#8E8E93' : '#8A8A8E',
     brandColor: isDark ? '#0A84FF' : '#007AFF',
+    // Message bubble colors
+    receivedMessage: isDark ? '#2c2c2e' : '#e5e5ea',
+    receivedMessageEncrypted: isDark ? '#1e3a5f' : '#d6e8ff', // Light blue for encrypted
+    sentMessage: isDark ? '#0A84FF' : '#007AFF',
+    sentMessageSending: isDark ? '#666666' : '#A0A0A0',
   };
 
   return (
@@ -425,10 +447,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
                     sx={{
                       p: 1.5,
                       borderRadius: '18px',
-                      bgcolor: message.isSelf ? (
-                        message.status === 'sending' ? (isDark ? '#666666' : '#A0A0A0') :
-                        colors.brandColor
-                      ) : (isDark ? '#2c2c2e' : '#e5e5ea'),
+                      bgcolor: getMessageBackgroundColor(message),
                       color: message.isSelf ? 'white' : colors.text,
                       borderBottomRightRadius: message.isSelf ? '4px' : '18px',
                       borderBottomLeftRadius: message.isSelf ? '18px' : '4px',

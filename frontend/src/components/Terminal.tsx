@@ -273,6 +273,7 @@ export const Terminal: React.FC<TerminalProps> = ({
                 localStorage.setItem('axol-was-connected', 'true'); // Save connection state
                 messageService.requestUserList();
                 ((terminal as ExtendedTerminal)._onConnect || onConnect)?.();
+                showPrompt();
               })
               .catch((error) => {
                 terminal.writeln(`\x1b[31m[ERROR]\x1b[0m Failed to connect: ${error.message}`);
@@ -473,15 +474,17 @@ export const Terminal: React.FC<TerminalProps> = ({
             break;
           case 'encrypted':
             terminal.writeln(`\x1b[32m[CRYPTO]\x1b[0m E2E encryption active (RSA-OAEP) with ${details?.encryptedUserCount || 0} user(s)`);
+            showPrompt();
             break;
           case 'partial-encryption':
             terminal.writeln(`\x1b[33m[CRYPTO]\x1b[0m Partial encryption: ${details?.encryptedUserCount || 0}/${details?.totalUserCount || 0} users have keys`);
+            showPrompt();
             break;
           case 'error':
             terminal.writeln(`\x1b[31m[CRYPTO]\x1b[0m RSA encryption error: ${details?.error || 'Unknown error'}`);
+            showPrompt();
             break;
         }
-        showPrompt();
       }
     });
     })();
