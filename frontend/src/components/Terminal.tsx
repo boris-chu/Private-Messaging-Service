@@ -14,6 +14,7 @@ import '@xterm/xterm/css/xterm.css';
 import { messageService } from '../services/messageService';
 import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
+import type { EncryptionState } from '../components/EncryptionStatus';
 
 interface TerminalProps {
   onCommand?: (command: string) => void;
@@ -34,6 +35,8 @@ export const Terminal: React.FC<TerminalProps> = ({
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [terminalSize, setTerminalSize] = useState({ cols: 80, rows: 24 });
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
+  const [encryptionState, setEncryptionState] = useState<EncryptionState>('no-encryption');
+  const [encryptedUserCount, setEncryptedUserCount] = useState(0);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -119,20 +122,24 @@ export const Terminal: React.FC<TerminalProps> = ({
         if (inputBuffer.trim()) {
           if (inputMode === 'message' && messageRecipient) {
             // Send message via messageService
-            const messageId = messageService.sendMessage(inputBuffer.trim(), messageRecipient);
+            (async () => {
+              const result = await messageService.sendMessage(inputBuffer.trim(), messageRecipient);
 
-            // Store sent message for status tracking
-            const sentMessage: Message = {
-              id: messageId,
-              content: inputBuffer.trim(),
-              sender: JSON.parse(localStorage.getItem('user') || '{"username":"guest"}').username,
-              timestamp: Date.now(),
-              isSelf: true,
-              status: 'sending'
-            };
-            setSentMessages(prev => new Map(prev.set(messageId, sentMessage)));
+              // Store sent message for status tracking
+              const sentMessage: Message = {
+                id: result.messageId,
+                content: inputBuffer.trim(),
+                sender: JSON.parse(localStorage.getItem('user') || '{"username":"guest"}').username,
+                timestamp: Date.now(),
+                isSelf: true,
+                status: 'sending',
+                isEncrypted: result.isEncrypted
+              };
+              setSentMessages(prev => new Map(prev.set(result.messageId, sentMessage)));
 
-            terminal.writeln(`\x1b[90m[SENDING]\x1b[0m \x1b[32m[TO ${messageRecipient}]\x1b[0m ${inputBuffer.trim()}`);
+              const encryptionIndicator = result.isEncrypted ? '\x1b[32m[🔒]\x1b[0m' : '\x1b[31m[📢]\x1b[0m';
+              terminal.writeln(`\x1b[90m[SENDING]\x1b[0m ${encryptionIndicator} \x1b[32m[TO ${messageRecipient}]\x1b[0m ${inputBuffer.trim()}`);
+            })();
             messageRecipient = '';
             inputMode = 'command';
           } else {
@@ -279,7 +286,9 @@ export const Terminal: React.FC<TerminalProps> = ({
       showOnlineStatus: privacySettings.showOnlineStatus,
       onMessageReceived: (message: Message) => {
         const timestamp = new Date(message.timestamp).toLocaleTimeString();
-        terminal.writeln(`\x1b[34m[${timestamp}]\x1b[0m \x1b[36m${message.sender}\x1b[0m: ${message.content}`);
+        const encryptionIndicator = message.isEncrypted ? '\x1b[32m[🔒]\x1b[0m' : '\x1b[31m[📢]\x1b[0m';
+        const errorIndicator = message.encryptionError ? '\x1b[31m[❌]\x1b[0m' : '';
+        terminal.writeln(`\x1b[34m[${timestamp}]\x1b[0m ${encryptionIndicator}${errorIndicator} \x1b[36m${message.sender}\x1b[0m: ${message.content}`);
         showPrompt();
       },
       onMessageStatusUpdate: (messageId: string, status: MessageStatus) => {
@@ -320,6 +329,30 @@ export const Terminal: React.FC<TerminalProps> = ({
         } else {
           terminal.writeln('\x1b[31m[SYSTEM]\x1b[0m WebSocket connection lost');
           setOnlineUsers([]);
+        }
+        showPrompt();
+      },
+      onEncryptionStateChange: (state: EncryptionState, details?: any) => {
+        setEncryptionState(state);
+        setEncryptedUserCount(details?.encryptedUserCount || 0);
+
+        // Show encryption status updates in terminal
+        switch (state) {
+          case 'initializing':
+            terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Initializing end-to-end encryption...');
+            break;
+          case 'generating-keys':
+            terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Generating encryption keys...');
+            break;
+          case 'exchanging-keys':
+            terminal.writeln('\x1b[36m[CRYPTO]\x1b[0m Exchanging public keys with users...');
+            break;
+          case 'encrypted':
+            terminal.writeln(`\x1b[32m[CRYPTO]\x1b[0m End-to-end encryption active with ${details?.encryptedUserCount || 0} user(s)`);
+            break;
+          case 'error':
+            terminal.writeln(`\x1b[31m[CRYPTO]\x1b[0m Encryption error: ${details?.error || 'Unknown error'}`);
+            break;
         }
         showPrompt();
       }

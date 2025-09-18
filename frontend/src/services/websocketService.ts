@@ -1,5 +1,5 @@
 interface WebSocketMessage {
-  type: 'message' | 'user_joined' | 'user_left' | 'user_list' | 'connection_status' | 'error' | 'auth' | 'user_list_request' | 'message_read' | 'message_delivered';
+  type: 'message' | 'user_joined' | 'user_left' | 'user_list' | 'connection_status' | 'error' | 'auth' | 'user_list_request' | 'message_read' | 'message_delivered' | 'public_key_exchange' | 'public_key_request' | 'encrypted_message';
   data: any;
   timestamp: number;
   sender?: string;
@@ -126,6 +126,35 @@ class WebSocketService {
     });
   }
 
+  sendEncryptedMessage(encryptedContent: string, recipient: string, messageId: string): void {
+    this.send({
+      type: 'encrypted_message',
+      data: {
+        encryptedContent,
+        recipient,
+        messageId,
+        isEncrypted: true
+      },
+      timestamp: Date.now()
+    });
+  }
+
+  sendPublicKey(publicKey: string): void {
+    this.send({
+      type: 'public_key_exchange',
+      data: { publicKey },
+      timestamp: Date.now()
+    });
+  }
+
+  requestPublicKey(username: string): void {
+    this.send({
+      type: 'public_key_request',
+      data: { username },
+      timestamp: Date.now()
+    });
+  }
+
   requestUserList(): void {
     this.send({
       type: 'user_list_request',
@@ -192,6 +221,31 @@ class WebSocketService {
           messageId: message.data.messageId,
           deliveredTo: message.sender,
           timestamp: message.timestamp
+        });
+        break;
+
+      case 'public_key_exchange':
+        this.emit('public_key_received', {
+          username: message.sender,
+          publicKey: message.data.publicKey,
+          timestamp: message.timestamp
+        });
+        break;
+
+      case 'public_key_request':
+        this.emit('public_key_requested', {
+          username: message.sender,
+          timestamp: message.timestamp
+        });
+        break;
+
+      case 'encrypted_message':
+        this.emit('encrypted_message', {
+          encryptedContent: message.data.encryptedContent,
+          sender: message.sender,
+          messageId: message.data.messageId,
+          timestamp: message.timestamp,
+          isEncrypted: true
         });
         break;
 

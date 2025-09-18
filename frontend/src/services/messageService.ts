@@ -1,4 +1,6 @@
 import { websocketService } from './websocketService';
+import { cryptoService } from './cryptoService';
+import type { EncryptionState } from '../components/EncryptionStatus';
 
 export type MessageStatus = 'sending' | 'delivered' | 'read';
 
@@ -11,6 +13,8 @@ export interface Message {
   status?: MessageStatus;
   isRead?: boolean;
   readBy?: string[];
+  isEncrypted?: boolean;
+  encryptionError?: string;
 }
 
 export interface MessageServiceConfig {
@@ -22,34 +26,77 @@ export interface MessageServiceConfig {
   onUserLeft: (user: string) => void;
   onUserListUpdate: (users: string[]) => void;
   onConnectionStatusChange: (connected: boolean) => void;
+  onEncryptionStateChange: (state: EncryptionState, details?: any) => void;
 }
 
 class MessageService {
   private config: MessageServiceConfig | null = null;
   private currentUser: string = '';
+  private encryptionState: EncryptionState = 'no-encryption';
+  private encryptedUsers: Set<string> = new Set();
 
-  initialize(config: MessageServiceConfig) {
+  async initialize(config: MessageServiceConfig) {
     this.config = config;
     this.currentUser = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}').username;
 
+    // Initialize encryption
+    await this.initializeEncryption();
+
     // Set up WebSocket listeners
     websocketService.on('message', this.handleMessage);
+    websocketService.on('encrypted_message', this.handleEncryptedMessage);
     websocketService.on('message_delivered', this.handleMessageDelivered);
     websocketService.on('message_read', this.handleMessageRead);
     websocketService.on('user_joined', this.handleUserJoined);
     websocketService.on('user_left', this.handleUserLeft);
     websocketService.on('user_list', this.handleUserList);
     websocketService.on('connection_status', this.handleConnectionStatus);
+    websocketService.on('public_key_received', this.handlePublicKeyReceived);
+    websocketService.on('public_key_requested', this.handlePublicKeyRequested);
+  }
+
+  private async initializeEncryption() {
+    try {
+      this.updateEncryptionState('initializing');
+
+      this.updateEncryptionState('generating-keys');
+      await cryptoService.initialize(this.currentUser);
+
+      this.updateEncryptionState('exchanging-keys');
+      // Send our public key to all users
+      const publicKey = await cryptoService.getPublicKeyAsString();
+      websocketService.sendPublicKey(publicKey);
+
+      this.updateEncryptionState('partial-encryption');
+    } catch (error) {
+      console.error('Encryption initialization failed:', error);
+      this.updateEncryptionState('error', { error: error.message });
+    }
+  }
+
+  private updateEncryptionState(state: EncryptionState, details?: any) {
+    this.encryptionState = state;
+    this.config?.onEncryptionStateChange(state, {
+      encryptedUserCount: this.encryptedUsers.size,
+      totalUserCount: this.encryptedUsers.size, // Will be updated when we get user list
+      ...details
+    });
   }
 
   cleanup() {
     websocketService.off('message', this.handleMessage);
+    websocketService.off('encrypted_message', this.handleEncryptedMessage);
     websocketService.off('message_delivered', this.handleMessageDelivered);
     websocketService.off('message_read', this.handleMessageRead);
     websocketService.off('user_joined', this.handleUserJoined);
     websocketService.off('user_left', this.handleUserLeft);
     websocketService.off('user_list', this.handleUserList);
     websocketService.off('connection_status', this.handleConnectionStatus);
+    websocketService.off('public_key_received', this.handlePublicKeyReceived);
+    websocketService.off('public_key_requested', this.handlePublicKeyRequested);
+
+    cryptoService.clearKeys();
+    this.encryptedUsers.clear();
     this.config = null;
   }
 
@@ -64,7 +111,8 @@ class MessageService {
       isSelf: data.sender === this.currentUser,
       status: 'delivered',
       isRead: false,
-      readBy: []
+      readBy: [],
+      isEncrypted: false // Plain text message
     };
 
     // Send delivery confirmation
@@ -76,6 +124,86 @@ class MessageService {
     }
 
     this.config.onMessageReceived(message);
+  };
+
+  private handleEncryptedMessage = async (data: any) => {
+    if (!this.config) return;
+
+    try {
+      // Decrypt the message
+      const decryptedContent = await cryptoService.decryptMessage(data.encryptedContent);
+
+      const message: Message = {
+        id: data.messageId || Date.now().toString(),
+        content: decryptedContent,
+        sender: data.sender,
+        timestamp: data.timestamp,
+        isSelf: data.sender === this.currentUser,
+        status: 'delivered',
+        isRead: false,
+        readBy: [],
+        isEncrypted: true
+      };
+
+      // Send delivery confirmation
+      this.sendDeliveryConfirmation(message.id);
+
+      // Send read receipt if enabled and message is not from self
+      if (this.config.showReadReceipts && !message.isSelf) {
+        this.sendReadReceipt(message.id);
+      }
+
+      this.config.onMessageReceived(message);
+    } catch (error) {
+      console.error('Failed to decrypt message:', error);
+
+      // Still show the message but mark it as having encryption error
+      const message: Message = {
+        id: data.messageId || Date.now().toString(),
+        content: '[Encrypted message - decryption failed]',
+        sender: data.sender,
+        timestamp: data.timestamp,
+        isSelf: data.sender === this.currentUser,
+        status: 'delivered',
+        isRead: false,
+        readBy: [],
+        isEncrypted: true,
+        encryptionError: error.message
+      };
+
+      this.config.onMessageReceived(message);
+    }
+  };
+
+  private handlePublicKeyReceived = async (data: any) => {
+    const { username, publicKey } = data;
+    if (username === this.currentUser) return; // Ignore our own key
+
+    try {
+      await cryptoService.storeUserPublicKey(username, publicKey);
+      this.encryptedUsers.add(username);
+
+      // Update encryption state
+      if (this.encryptedUsers.size > 0) {
+        this.updateEncryptionState('encrypted');
+      }
+
+      console.log(`🔑 Received and stored public key for ${username}`);
+    } catch (error) {
+      console.error(`Failed to store public key for ${username}:`, error);
+    }
+  };
+
+  private handlePublicKeyRequested = async (data: any) => {
+    const { username } = data;
+    try {
+      // Send our public key to the requesting user
+      const publicKey = await cryptoService.getPublicKeyAsString();
+      websocketService.sendPublicKey(publicKey);
+      console.log(`📤 Sent public key to ${username}`);
+    } catch (error) {
+      console.error('Failed to send public key:', error);
+    }
   };
 
   private handleMessageDelivered = (data: any) => {
@@ -108,19 +236,43 @@ class MessageService {
     this.config.onConnectionStatusChange(data.status === 'connected');
   };
 
-  sendMessage(content: string, recipient?: string) {
+  async sendMessage(content: string, recipient?: string): Promise<{ messageId: string; isEncrypted: boolean }> {
     const messageId = Date.now().toString();
+    let isEncrypted = false;
+
+    if (recipient && cryptoService.hasPublicKeyFor(recipient)) {
+      // Send encrypted message
+      try {
+        const encryptedContent = await cryptoService.encryptMessage(content, recipient);
+        websocketService.sendEncryptedMessage(encryptedContent, recipient, messageId);
+        isEncrypted = true;
+        console.log(`🔒 Sent encrypted message to ${recipient}`);
+      } catch (error) {
+        console.error('Encryption failed, sending as plain text:', error);
+        // Fall back to plain text
+        this.sendPlainTextMessage(content, recipient, messageId);
+      }
+    } else {
+      // Send plain text message
+      this.sendPlainTextMessage(content, recipient, messageId);
+    }
+
+    return { messageId, isEncrypted };
+  }
+
+  private sendPlainTextMessage(content: string, recipient?: string, messageId?: string) {
+    const finalMessageId = messageId || Date.now().toString();
     websocketService.send({
       type: 'message',
       data: {
         content,
         recipient,
-        messageId,
+        messageId: finalMessageId,
         requireReadReceipt: this.config?.showReadReceipts || false
       },
       timestamp: Date.now()
     });
-    return messageId;
+    return finalMessageId;
   }
 
   sendDeliveryConfirmation(messageId: string) {
@@ -155,6 +307,18 @@ class MessageService {
 
   get isConnected() {
     return websocketService.isConnected;
+  }
+
+  getCurrentEncryptionState(): EncryptionState {
+    return this.encryptionState;
+  }
+
+  getEncryptedUsers(): string[] {
+    return Array.from(this.encryptedUsers);
+  }
+
+  canEncryptFor(username: string): boolean {
+    return cryptoService.hasPublicKeyFor(username);
   }
 }
 

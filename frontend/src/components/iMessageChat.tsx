@@ -17,6 +17,8 @@ import {
 import { messageService } from '../services/messageService';
 import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
+import { EncryptionStatus, MessageEncryptionBadge } from './EncryptionStatus';
+import type { EncryptionState } from './EncryptionStatus';
 
 interface iMessageChatProps {
   connected?: boolean;
@@ -32,6 +34,8 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
   const [inputMessage, setInputMessage] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(connected);
+  const [encryptionState, setEncryptionState] = useState<EncryptionState>('no-encryption');
+  const [encryptedUserCount, setEncryptedUserCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
 
@@ -88,6 +92,10 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
       },
       onConnectionStatusChange: (connected: boolean) => {
         setIsConnected(connected);
+      },
+      onEncryptionStateChange: (state: EncryptionState, details?: any) => {
+        setEncryptionState(state);
+        setEncryptedUserCount(details?.encryptedUserCount || 0);
       }
     });
 
@@ -96,18 +104,19 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
     };
   }, [currentUser.username, privacySettings]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputMessage.trim() && isConnected) {
-      const messageId = messageService.sendMessage(inputMessage.trim());
+      const result = await messageService.sendMessage(inputMessage.trim());
 
       // Add the message immediately with "sending" status
       const newMessage: Message = {
-        id: messageId,
+        id: result.messageId,
         content: inputMessage.trim(),
         sender: currentUser.username,
         timestamp: Date.now(),
         isSelf: true,
-        status: 'sending'
+        status: 'sending',
+        isEncrypted: result.isEncrypted
       };
 
       setMessages(prev => [...prev, newMessage]);
@@ -147,11 +156,19 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
               Axol Chat
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <img src="/axolotl.png" alt="Users" style={{ width: 16, height: 16 }} />
-            <Typography variant="body2" color="text.secondary">
-              {isConnected && privacySettings.showOnlineStatus ? `${onlineUsers.length} online` : 'Offline'}
-            </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <img src="/axolotl.png" alt="Users" style={{ width: 16, height: 16 }} />
+              <Typography variant="body2" color="text.secondary">
+                {isConnected && privacySettings.showOnlineStatus ? `${onlineUsers.length} online` : 'Offline'}
+              </Typography>
+            </Box>
+            <EncryptionStatus
+              state={encryptionState}
+              encryptedUserCount={encryptedUserCount}
+              totalUserCount={onlineUsers.length}
+              compact={true}
+            />
           </Box>
         </Box>
       </Box>
@@ -174,6 +191,18 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
               clickable
               color="primary"
               sx={{ mt: 1 }}
+            />
+          </Box>
+        )}
+
+        {isConnected && (
+          <Box sx={{ p: 2 }}>
+            <EncryptionStatus
+              state={encryptionState}
+              encryptedUserCount={encryptedUserCount}
+              totalUserCount={onlineUsers.length}
+              currentUser={currentUser.username}
+              compact={false}
             />
           </Box>
         )}
@@ -233,6 +262,7 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
                     <Typography variant="caption" color="text.secondary">
                       {formatTime(message.timestamp)}
                     </Typography>
+                    <MessageEncryptionBadge isEncrypted={message.isEncrypted || false} size="small" />
                     {message.isSelf && (
                       message.status === 'sending' ? (
                         <Typography variant="caption" sx={{ fontSize: 10, color: 'text.disabled' }}>
