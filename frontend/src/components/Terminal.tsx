@@ -211,7 +211,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           }
           break;
 
-        case 'status':
+        case 'status': {
           const wsStatus = messageService.isConnected;
           const statusText = wsStatus ?
             '\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection active' :
@@ -231,6 +231,7 @@ export const Terminal: React.FC<TerminalProps> = ({
             terminal.writeln(`\x1b[90mRead receipts: ${readReceiptStatus}\x1b[0m`);
           }
           break;
+        }
 
         case 'clear':
           terminal.clear();
@@ -256,11 +257,12 @@ export const Terminal: React.FC<TerminalProps> = ({
           }
           break;
 
-        case 'read mode':
+        case 'read mode': {
           const readStatus = privacySettings.showReadReceipts ? 'enabled' : 'disabled';
           terminal.writeln(`\x1b[33mRead receipts:\x1b[0m ${readStatus}`);
           terminal.writeln('\x1b[90mUse \x1b[32mread -on\x1b[0m or \x1b[32mread -off\x1b[0m to change settings\x1b[0m');
           break;
+        }
 
         case 'read -on':
           if (!privacySettings.showReadReceipts) {

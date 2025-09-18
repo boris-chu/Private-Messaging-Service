@@ -100,10 +100,10 @@ export const RegisterPage: React.FC = () => {
 
     setUsernameCheckLoading(true);
     try {
-      const response = await apiService.getUser(username);
+      await apiService.getUser(username);
       // If we get a response, user exists
       setUsernameAvailable(false);
-    } catch (error) {
+    } catch {
       // If we get an error (like 404), username is available
       setUsernameAvailable(true);
     } finally {
@@ -153,7 +153,8 @@ export const RegisterPage: React.FC = () => {
       }));
     } else if (field !== 'username') {
       setFieldValidation(prev => {
-        const { [field]: removed, ...rest } = prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [field]: _, ...rest } = prev;
         return rest;
       });
     }

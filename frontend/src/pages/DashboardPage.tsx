@@ -18,7 +18,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { Terminal } from '../components/Terminal';
-import { iMessageChat as IMessageChat } from '../components/iMessageChat';
+import { IMessageChat } from '../components/iMessageChat';
 import { SettingsModal } from '../components/SettingsModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { websocketService } from '../services/websocketService';

@@ -26,7 +26,7 @@ interface iMessageChatProps {
   onConnect?: () => void;
 }
 
-export const iMessageChat: React.FC<iMessageChatProps> = ({
+export const IMessageChat: React.FC<iMessageChatProps> = ({
   connected = false,
   onConnect
 }) => {
