@@ -154,7 +154,15 @@ export class ConnectionManager {
     const { data, username: directUsername } = message;
     const username = data?.username || directUsername || data?.token;
 
+    console.log(`DEBUG: Authentication attempt for connection ${connectionId}:`, {
+      data,
+      directUsername,
+      resolvedUsername: username,
+      messageType: message.type
+    });
+
     if (!username) {
+      console.log(`DEBUG: Authentication failed for ${connectionId} - no username provided`);
       this.sendToConnection(connectionId, {
         type: 'error',
         data: { error: 'Username or token required for authentication' }
@@ -165,6 +173,12 @@ export class ConnectionManager {
     // Store the user-connection mapping
     this.userConnections.set(username, connectionId);
     this.connectionUsers.set(connectionId, username);
+
+    console.log(`DEBUG: User ${username} authenticated on connection ${connectionId}. Current user mappings:`, {
+      totalConnections: this.connections.size,
+      totalUsers: this.connectionUsers.size,
+      userList: Array.from(this.connectionUsers.values())
+    });
 
     this.sendToConnection(connectionId, {
       type: 'connection_status',
@@ -177,15 +191,21 @@ export class ConnectionManager {
 
     // Send the current list of online users to the newly authenticated user
     const currentUsers = Array.from(this.connectionUsers.values()).filter(u => u !== username);
+    console.log(`DEBUG: Sending user list to ${username}:`, { currentUsers, totalOtherUsers: currentUsers.length });
+
     if (currentUsers.length > 0) {
       this.sendToConnection(connectionId, {
         type: 'user_list',
         data: { users: currentUsers },
         timestamp: Date.now()
       });
+      console.log(`DEBUG: User list sent to ${username}`);
+    } else {
+      console.log(`DEBUG: No other users online, not sending user list to ${username}`);
     }
 
     // Broadcast user joined event to others
+    console.log(`DEBUG: Broadcasting user_joined event for ${username} to other users`);
     this.broadcastToOthers(connectionId, {
       type: 'user_joined',
       data: { user: username },
@@ -326,12 +346,20 @@ export class ConnectionManager {
   }
 
   private handleUserListRequest(connectionId: string): void {
+    const requestingUser = this.connectionUsers.get(connectionId);
     const users = Array.from(this.connectionUsers.values());
+    console.log(`DEBUG: User list requested by ${requestingUser || 'unknown'} (${connectionId}):`, {
+      users,
+      totalUsers: users.length,
+      allConnections: this.connections.size
+    });
+
     this.sendToConnection(connectionId, {
       type: 'user_list',
       data: { users },
       timestamp: Date.now()
     });
+    console.log(`DEBUG: User list response sent to ${requestingUser || 'unknown'}`);
   }
 
   private relayPublicKeyExchange(connectionId: string, message: any): void {

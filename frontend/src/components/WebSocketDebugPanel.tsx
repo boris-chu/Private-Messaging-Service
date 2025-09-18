@@ -97,6 +97,22 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
       return originalSend(message);
     };
 
+    // Intercept WebSocket message reception by hooking into the handleMessage private method
+    // We'll do this by listening to console logs for raw WebSocket messages
+    const originalConsoleLog = console.log;
+    console.log = (...args: unknown[]) => {
+      if (args.length > 0 && typeof args[0] === 'string' && args[0] === 'Received WebSocket message:' && args[1]) {
+        const message = args[1] as WebSocketMessage;
+        addEvent({
+          type: 'received',
+          category: message.type || 'unknown',
+          data: message,
+          description: `Raw received: ${message.type} - ${JSON.stringify(message.data || {}).substring(0, 100)}...`
+        });
+      }
+      return originalConsoleLog.apply(console, args);
+    };
+
     // Listen to all events
     const eventTypes = [
       'connection_status',
@@ -107,7 +123,9 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
       'encrypted_message',
       'public_key_received',
       'public_key_requested',
-      'error'
+      'error',
+      'message_read',
+      'message_delivered'
     ];
 
     const listeners: Array<() => void> = [];
@@ -157,6 +175,14 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
             type = 'error';
             description = `Error: ${dataObj.error || dataObj.message || 'Unknown error'}`;
             break;
+          case 'message_read':
+            type = 'received';
+            description = `Message read by ${dataObj.sender}`;
+            break;
+          case 'message_delivered':
+            type = 'received';
+            description = `Message delivered to ${dataObj.sender}`;
+            break;
           default:
             description = `${eventType}: ${JSON.stringify(data).substring(0, 100)}...`;
         }
@@ -183,8 +209,9 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
 
     return () => {
       listeners.forEach(cleanup => cleanup());
-      // Restore original send method
+      // Restore original methods
       websocketService.send = originalSend;
+      console.log = originalConsoleLog;
     };
   }, [enabled, websocketService, addEvent]);
 
