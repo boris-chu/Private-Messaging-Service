@@ -210,17 +210,6 @@ export const LoginPage: React.FC = () => {
               </Link>
             </Box>
           </Box>
-
-          {/* Demo Credentials */}
-          <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Demo Credentials:
-            </Typography>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              Username: <strong>demo</strong><br />
-              Password: <strong>demo</strong>
-            </Typography>
-          </Box>
         </CardContent>
       </Card>
       </Container>

@@ -153,19 +153,31 @@ async function handleUserRegistration(request: Request, env: Env): Promise<Respo
   }
 
   try {
-    const { username, email, fullName, company, turnstileToken } = await request.json();
+    const { username, password, email, fullName, company, turnstileToken } = await request.json();
 
-    // Verify Turnstile token
-    const clientIP = request.headers.get('CF-Connecting-IP') || '';
-    const isHuman = await verifyTurnstileToken(turnstileToken, clientIP, env.TURNSTILE_SECRET_KEY);
-
-    if (!isHuman) {
+    // Basic validation
+    if (!username || !password) {
       return new Response(JSON.stringify({
-        error: 'Verification failed. Please try again.'
+        error: 'Username and password are required'
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
+    }
+
+    // Skip Turnstile verification in development or if not provided
+    if (turnstileToken && env.TURNSTILE_SECRET_KEY) {
+      const clientIP = request.headers.get('CF-Connecting-IP') || '';
+      const isHuman = await verifyTurnstileToken(turnstileToken, clientIP, env.TURNSTILE_SECRET_KEY);
+
+      if (!isHuman) {
+        return new Response(JSON.stringify({
+          error: 'Verification failed. Please try again.'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
     }
 
     // Store user in Durable Object
@@ -174,7 +186,13 @@ async function handleUserRegistration(request: Request, env: Env): Promise<Respo
 
     const response = await sessionObject.fetch('http://session/register', {
       method: 'POST',
-      body: JSON.stringify({ username, email, fullName, company }),
+      body: JSON.stringify({
+        username,
+        password,
+        email: email || `${username}@axol.local`,
+        fullName: fullName || username,
+        company: company || 'Private User'
+      }),
     });
 
     const result = await response.text();

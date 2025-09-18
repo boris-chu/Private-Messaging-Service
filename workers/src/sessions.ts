@@ -24,7 +24,17 @@ export class SessionManager {
 
   private async registerUser(request: Request): Promise<Response> {
     try {
-      const { username, email, fullName, company } = await request.json();
+      const { username, password, email, fullName, company } = await request.json();
+
+      // Basic validation
+      if (!username || !password) {
+        return new Response(JSON.stringify({
+          error: 'Username and password are required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
 
       if (this.users.has(username)) {
         return new Response(JSON.stringify({
@@ -37,6 +47,7 @@ export class SessionManager {
 
       const userData: UserData = {
         username,
+        password,
         email,
         fullName,
         company,
@@ -136,6 +147,7 @@ export class SessionManager {
 
 interface UserData {
   username: string;
+  password: string;
   email: string;
   fullName: string;
   company: string;
