@@ -93,7 +93,7 @@ export const Terminal: React.FC<TerminalProps> = ({
     // Initial welcome message
     terminal.writeln('\x1b[32m╭─────────────────────────────────────────────────────────╮\x1b[0m');
     terminal.writeln('\x1b[32m│\x1b[0m                      \x1b[1;36mAxol Chat\x1b[0m                        \x1b[32m│\x1b[0m');
-    terminal.writeln('\x1b[32m│\x1b[0m              \x1b[33mAxol — private talk, under the shell.\x1b[0m             \x1b[32m│\x1b[0m');
+    terminal.writeln('\x1b[32m│\x1b[0m              \x1b[33mAxol — private talk, under the shell.\x1b[0m              \x1b[32m│\x1b[0m');
     terminal.writeln('\x1b[32m╰─────────────────────────────────────────────────────────╯\x1b[0m');
     terminal.writeln('');
 
@@ -404,26 +404,7 @@ export const Terminal: React.FC<TerminalProps> = ({
     // Set fixed terminal size and ensure proper scrolling
     terminal.resize(terminalSize.cols, terminalSize.rows);
 
-    // Force scroll to bottom after any output and ensure proper scrolling
-    const originalWriteln = terminal.writeln.bind(terminal);
-    const originalWrite = terminal.write.bind(terminal);
-
-    terminal.writeln = function(data: string | Uint8Array = '') {
-      originalWriteln(data);
-      // Force scroll to bottom immediately and after a small delay
-      terminal.scrollToBottom();
-      setTimeout(() => {
-        terminal.scrollToBottom();
-      }, 10);
-    };
-
-    terminal.write = function(data: string | Uint8Array, callback?: () => void) {
-      originalWrite(data, callback);
-      // Ensure cursor is visible after writing
-      setTimeout(() => {
-        terminal.scrollToBottom();
-      }, 10);
-    };
+    // Let xterm handle natural scrolling behavior like a real terminal
 
     return () => {
       // Clean up message service
