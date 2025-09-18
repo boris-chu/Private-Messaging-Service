@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { Box, Paper, IconButton, Tooltip } from '@mui/material';
+import { Box, Paper, IconButton, Tooltip, Typography, Menu, MenuItem } from '@mui/material';
 import {
-  Fullscreen,
-  FullscreenExit,
-  Refresh
+  Refresh,
+  Settings,
+  Logout
 } from '@mui/icons-material';
 import '@xterm/xterm/css/xterm.css';
 import { messageService } from '../services/messageService';
@@ -18,22 +18,56 @@ interface TerminalProps {
   onCommand?: (command: string) => void;
   onConnect?: () => void;
   connected?: boolean;
+  onSettings?: () => void;
+  onLogout?: () => void;
+  onlineUserCount?: number;
 }
 
 export const Terminal: React.FC<TerminalProps> = ({
   onCommand,
   onConnect,
-  connected = false
+  connected = false,
+  onSettings,
+  onLogout,
+  onlineUserCount = 0
 }) => {
   const { privacySettings, updatePrivacySettings } = useTheme();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   // Removed fixed terminal size - now using fit addon for dynamic sizing
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
   const [prevPrivacySettings, setPrevPrivacySettings] = useState(privacySettings);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [user, setUser] = useState<any>(null);
+
+  // Load user data
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
+
+  // Menu handlers
+  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSettings = () => {
+    setAnchorEl(null);
+    onSettings?.();
+  };
+
+  const handleLogout = () => {
+    setAnchorEl(null);
+    onLogout?.();
+  };
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -489,14 +523,6 @@ export const Terminal: React.FC<TerminalProps> = ({
     setPrevPrivacySettings(privacySettings);
   }, [privacySettings]);
 
-  const handleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-    setTimeout(() => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
-      }
-    }, 100);
-  };
 
   const handleRefresh = () => {
     if (xtermRef.current) {
@@ -509,19 +535,13 @@ export const Terminal: React.FC<TerminalProps> = ({
 
   return (
     <Paper
-      elevation={3}
+      elevation={0}
       sx={{
-        position: isFullscreen ? 'fixed' : 'relative',
-        top: isFullscreen ? 0 : 'auto',
-        left: isFullscreen ? 0 : 'auto',
-        right: isFullscreen ? 0 : 'auto',
-        bottom: isFullscreen ? 0 : 'auto',
-        zIndex: isFullscreen ? 9999 : 'auto',
-        height: isFullscreen ? '100vh' : { xs: '600px', md: '750px', lg: '850px' }, // Increased heights for better scrolling
-        width: isFullscreen ? '100vw' : '100%',
+        height: '100vh',
+        width: '100vw',
         bgcolor: '#0d1117',
-        border: '1px solid #30363d',
-        borderRadius: isFullscreen ? 0 : 1,
+        border: 'none',
+        borderRadius: 0,
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column'
@@ -540,21 +560,60 @@ export const Terminal: React.FC<TerminalProps> = ({
           minHeight: '48px'
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              bgcolor: connected ? '#28ca42' : '#ff5f57'
-            }}
-          />
-          <Box sx={{ fontSize: '13px', color: '#8b949e', fontWeight: 500 }}>
-            {connected ? 'Connected' : 'Disconnected'}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* Axol Chat Branding */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <img src="/axolotl.png" alt="Axol" style={{ width: 24, height: 24 }} />
+            <Typography variant="h6" sx={{ color: '#00d4aa', fontSize: '16px', fontWeight: 600 }}>
+              Axol Chat
+            </Typography>
           </Box>
+
+          {/* Connection Status */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: connected ? '#28ca42' : '#ff5f57'
+              }}
+            />
+            <Box sx={{ fontSize: '13px', color: '#8b949e', fontWeight: 500 }}>
+              {connected ? 'Connected' : 'Disconnected'}
+            </Box>
+          </Box>
+
+          {/* Online User Count */}
+          {connected && onlineUserCount > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="body2" sx={{ color: '#8b949e', fontSize: '12px' }}>
+                {onlineUserCount} user{onlineUserCount !== 1 ? 's' : ''} online
+              </Typography>
+            </Box>
+          )}
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {user && (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
+                <Typography variant="body2" sx={{ color: '#8b949e', fontSize: '12px' }}>
+                  {user.fullName || user.username}
+                </Typography>
+                <Tooltip title="User Menu">
+                  <IconButton
+                    size="small"
+                    onClick={handleMenu}
+                    sx={{ color: '#8b949e', '&:hover': { color: '#00d4aa' } }}
+                  >
+                    <img src="/axolotl.png" alt="User Avatar" style={{ width: 20, height: 20, borderRadius: '50%' }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </>
+          )}
+
           <Tooltip title="Refresh Terminal">
             <IconButton
               size="small"
@@ -562,16 +621,6 @@ export const Terminal: React.FC<TerminalProps> = ({
               sx={{ color: '#8b949e', '&:hover': { color: '#00d4aa' } }}
             >
               <Refresh fontSize="small" />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
-            <IconButton
-              size="small"
-              onClick={handleFullscreen}
-              sx={{ color: '#8b949e', '&:hover': { color: '#00d4aa' } }}
-            >
-              {isFullscreen ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
             </IconButton>
           </Tooltip>
         </Box>
@@ -606,6 +655,23 @@ export const Terminal: React.FC<TerminalProps> = ({
           }
         }}
       />
+
+      {/* User Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleCloseMenu}
+        sx={{ mt: '45px' }}
+      >
+        <MenuItem onClick={handleSettings}>
+          <Settings sx={{ mr: 1 }} />
+          Settings
+        </MenuItem>
+        <MenuItem onClick={handleLogout}>
+          <Logout sx={{ mr: 1 }} />
+          Logout
+        </MenuItem>
+      </Menu>
     </Paper>
   );
 };

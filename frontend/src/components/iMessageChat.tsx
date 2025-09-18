@@ -8,12 +8,17 @@ import {
   Chip,
   List,
   ListItem,
-  ListItemButton
+  ListItemButton,
+  Menu,
+  MenuItem,
+  Tooltip
 } from '@mui/material';
 import {
   Send,
   Circle,
-  DoneAll
+  DoneAll,
+  Settings,
+  Logout,
 } from '@mui/icons-material';
 import { messageService } from '../services/messageService';
 import type { Message, MessageStatus } from '../services/messageService';
@@ -24,11 +29,17 @@ import type { EncryptionState } from './EncryptionStatus';
 interface iMessageChatProps {
   connected?: boolean;
   onConnect?: () => void;
+  onSettings?: () => void;
+  onLogout?: () => void;
+  onlineUserCount?: number;
 }
 
 export const IMessageChat: React.FC<iMessageChatProps> = ({
   connected = false,
-  onConnect
+  onConnect,
+  onSettings,
+  onLogout,
+  onlineUserCount = 0
 }) => {
   const { privacySettings } = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -39,6 +50,35 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   const [encryptedUserCount, setEncryptedUserCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUser = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [user, setUser] = useState<any>(null);
+
+  // Load user data
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
+
+  // Menu handlers
+  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSettings = () => {
+    setAnchorEl(null);
+    onSettings?.();
+  };
+
+  const handleLogout = () => {
+    setAnchorEl(null);
+    onLogout?.();
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -139,43 +179,103 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   };
 
   return (
-    <Box sx={{ display: 'flex', height: '100%', bgcolor: '#ffffff' }}>
-      {/* Main Chat Area */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{
-          p: 2,
-          borderBottom: '1px solid #e5e5ea',
+    <Paper
+      elevation={0}
+      sx={{
+        height: '100vh',
+        width: '100vw',
+        bgcolor: '#ffffff',
+        border: 'none',
+        borderRadius: 0,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      {/* iMessage Header */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 2,
+          py: 1.5,
           bgcolor: '#f6f6f6',
-          backdropFilter: 'blur(10px)'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Circle
-                sx={{
-                  fontSize: 12,
-                  color: isConnected ? '#34C759' : '#FF3B30'
-                }}
-              />
-              <Typography variant="h6" sx={{ color: '#000000', fontWeight: 600 }}>
-                Axol Chat
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <img src="/axolotl.png" alt="Users" style={{ width: 16, height: 16 }} />
-                <Typography variant="body2" sx={{ color: '#8e8e93' }}>
-                  {isConnected && privacySettings.showOnlineStatus ? `${onlineUsers.length} online` : 'Offline'}
-                </Typography>
-              </Box>
-              <EncryptionStatus
-                state={encryptionState}
-                encryptedUserCount={encryptedUserCount}
-                totalUserCount={onlineUsers.length}
-                compact={true}
-              />
+          borderBottom: '1px solid #e5e5ea',
+          minHeight: '48px'
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* Axol Chat Branding */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <img src="/axolotl.png" alt="Axol" style={{ width: 24, height: 24 }} />
+            <Typography variant="h6" sx={{ color: '#007AFF', fontSize: '16px', fontWeight: 600 }}>
+              Axol Chat
+            </Typography>
+          </Box>
+
+          {/* Connection Status */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Circle
+              sx={{
+                fontSize: 10,
+                color: isConnected ? '#34C759' : '#FF3B30'
+              }}
+            />
+            <Box sx={{ fontSize: '13px', color: '#8A8A8E', fontWeight: 500 }}>
+              {isConnected ? 'Connected' : 'Disconnected'}
             </Box>
           </Box>
+
+          {/* Online User Count */}
+          {isConnected && onlineUserCount > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="body2" sx={{ color: '#8A8A8E', fontSize: '12px' }}>
+                {onlineUserCount} user{onlineUserCount !== 1 ? 's' : ''} online
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {user && (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
+                <Typography variant="body2" sx={{ color: '#8A8A8E', fontSize: '12px' }}>
+                  {user.fullName || user.username}
+                </Typography>
+                <Tooltip title="User Menu">
+                  <IconButton
+                    size="small"
+                    onClick={handleMenu}
+                    sx={{ color: '#8A8A8E', '&:hover': { color: '#007AFF' } }}
+                  >
+                    <img src="/axolotl.png" alt="User Avatar" style={{ width: 20, height: 20, borderRadius: '50%' }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </>
+          )}
+        </Box>
+      </Box>
+
+      {/* Main Chat Area */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Encryption Status Bar */}
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 1,
+          bgcolor: '#f0f0f0',
+          borderBottom: '1px solid #e5e5ea'
+        }}>
+          <EncryptionStatus
+            state={encryptionState}
+            encryptedUserCount={encryptedUserCount}
+            totalUserCount={onlineUsers.length}
+            compact={true}
+          />
         </Box>
 
         {/* Messages */}
@@ -428,6 +528,23 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           )}
         </List>
       </Box>
-    </Box>
+
+      {/* User Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleCloseMenu}
+        sx={{ mt: '45px' }}
+      >
+        <MenuItem onClick={handleSettings}>
+          <Settings sx={{ mr: 1 }} />
+          Settings
+        </MenuItem>
+        <MenuItem onClick={handleLogout}>
+          <Logout sx={{ mr: 1 }} />
+          Logout
+        </MenuItem>
+      </Menu>
+    </Paper>
   );
 };
