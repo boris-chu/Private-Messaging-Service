@@ -28,7 +28,7 @@ export const Terminal: React.FC<TerminalProps> = ({
   onConnect,
   connected = false
 }) => {
-  const { privacySettings } = useTheme();
+  const { privacySettings, updatePrivacySettings } = useTheme();
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -36,6 +36,7 @@ export const Terminal: React.FC<TerminalProps> = ({
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [terminalSize, setTerminalSize] = useState({ cols: 80, rows: 30 }); // More vertical space
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
+  const [prevPrivacySettings, setPrevPrivacySettings] = useState(privacySettings);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -102,7 +103,8 @@ export const Terminal: React.FC<TerminalProps> = ({
     if (!connected) {
       terminal.writeln('\x1b[31m[DISCONNECTED]\x1b[0m Type \x1b[32mconnect\x1b[0m to establish secure connection');
     } else {
-      terminal.writeln('\x1b[32m[CONNECTED]\x1b[0m Secure connection established');
+      terminal.writeln('\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection established');
+      terminal.writeln('\x1b[32m[CRYPTO]\x1b[0m RSA-OAEP 2048-bit end-to-end encryption initialized');
     }
 
     terminal.writeln('Type \x1b[32mhelp\x1b[0m for available commands');
@@ -176,6 +178,9 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('  \x1b[32mstatus\x1b[0m      - Show connection status');
           terminal.writeln('  \x1b[32musers\x1b[0m       - List online users');
           terminal.writeln('  \x1b[32mmsg <user>\x1b[0m  - Send message to user');
+          terminal.writeln('  \x1b[32mread mode\x1b[0m   - Show read receipt status');
+          terminal.writeln('  \x1b[32mread -on\x1b[0m    - Enable read receipts');
+          terminal.writeln('  \x1b[32mread -off\x1b[0m   - Disable read receipts');
           terminal.writeln('  \x1b[32mclear\x1b[0m       - Clear terminal');
           terminal.writeln('  \x1b[32mhelp\x1b[0m        - Show this help');
           terminal.writeln('');
@@ -187,6 +192,7 @@ export const Terminal: React.FC<TerminalProps> = ({
             messageService.connect()
               .then(() => {
                 terminal.writeln('\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection established');
+                terminal.writeln('\x1b[32m[CRYPTO]\x1b[0m RSA-OAEP 2048-bit end-to-end encryption initialized');
                 messageService.requestUserList();
                 onConnect?.();
               })
@@ -214,8 +220,18 @@ export const Terminal: React.FC<TerminalProps> = ({
             '\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection active' :
             '\x1b[31m[DISCONNECTED]\x1b[0m No active connection';
           terminal.writeln(statusText);
-          if (wsStatus && privacySettings.showOnlineStatus) {
-            terminal.writeln(`\x1b[90mOnline users: ${onlineUsers.length}\x1b[0m`);
+          if (wsStatus) {
+            terminal.writeln('\x1b[32m[CRYPTO]\x1b[0m RSA-OAEP 2048-bit encryption: Active');
+            const encryptionState = messageService.getCurrentEncryptionState();
+            const encryptedUsers = messageService.getEncryptedUsers();
+            terminal.writeln(`\x1b[90mEncryption status: ${encryptionState}, Users with keys: ${encryptedUsers.length}\x1b[0m`);
+
+            if (privacySettings.showOnlineStatus) {
+              terminal.writeln(`\x1b[90mOnline users: ${onlineUsers.length}\x1b[0m`);
+            }
+
+            const readReceiptStatus = privacySettings.showReadReceipts ? 'enabled' : 'disabled';
+            terminal.writeln(`\x1b[90mRead receipts: ${readReceiptStatus}\x1b[0m`);
           }
           break;
 
@@ -240,6 +256,32 @@ export const Terminal: React.FC<TerminalProps> = ({
             messageService.requestUserList();
           } else {
             terminal.writeln('\x1b[31mNot connected to server\x1b[0m');
+          }
+          break;
+
+        case 'read mode':
+          const readStatus = privacySettings.showReadReceipts ? 'enabled' : 'disabled';
+          terminal.writeln(`\x1b[33mRead receipts:\x1b[0m ${readStatus}`);
+          terminal.writeln('\x1b[90mUse \x1b[32mread -on\x1b[0m or \x1b[32mread -off\x1b[0m to change settings\x1b[0m');
+          break;
+
+        case 'read -on':
+          if (!privacySettings.showReadReceipts) {
+            updatePrivacySettings({ showReadReceipts: true });
+            terminal.writeln('\x1b[32m[PRIVACY]\x1b[0m Read receipts enabled');
+            terminal.writeln('\x1b[90mOther users will see when you read their messages\x1b[0m');
+          } else {
+            terminal.writeln('\x1b[33mRead receipts are already enabled\x1b[0m');
+          }
+          break;
+
+        case 'read -off':
+          if (privacySettings.showReadReceipts) {
+            updatePrivacySettings({ showReadReceipts: false });
+            terminal.writeln('\x1b[31m[PRIVACY]\x1b[0m Read receipts disabled');
+            terminal.writeln('\x1b[90mOther users will not see when you read their messages\x1b[0m');
+          } else {
+            terminal.writeln('\x1b[33mRead receipts are already disabled\x1b[0m');
           }
           break;
 
@@ -337,19 +379,22 @@ export const Terminal: React.FC<TerminalProps> = ({
         // Show encryption status updates in terminal
         switch (state) {
           case 'initializing':
-            terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Initializing end-to-end encryption...');
+            terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Initializing RSA-OAEP 2048-bit encryption...');
             break;
           case 'generating-keys':
-            terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Generating encryption keys...');
+            terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Generating RSA 2048-bit key pair (SHA-256)...');
             break;
           case 'exchanging-keys':
-            terminal.writeln('\x1b[36m[CRYPTO]\x1b[0m Exchanging public keys with users...');
+            terminal.writeln('\x1b[36m[CRYPTO]\x1b[0m Exchanging public keys with peers...');
             break;
           case 'encrypted':
-            terminal.writeln(`\x1b[32m[CRYPTO]\x1b[0m End-to-end encryption active with ${details?.encryptedUserCount || 0} user(s)`);
+            terminal.writeln(`\x1b[32m[CRYPTO]\x1b[0m E2E encryption active (RSA-OAEP) with ${details?.encryptedUserCount || 0} user(s)`);
+            break;
+          case 'partial-encryption':
+            terminal.writeln(`\x1b[33m[CRYPTO]\x1b[0m Partial encryption: ${details?.encryptedUserCount || 0}/${details?.totalUserCount || 0} users have keys`);
             break;
           case 'error':
-            terminal.writeln(`\x1b[31m[CRYPTO]\x1b[0m Encryption error: ${details?.error || 'Unknown error'}`);
+            terminal.writeln(`\x1b[31m[CRYPTO]\x1b[0m RSA encryption error: ${details?.error || 'Unknown error'}`);
             break;
         }
         showPrompt();
@@ -366,6 +411,43 @@ export const Terminal: React.FC<TerminalProps> = ({
       terminal.dispose();
     };
   }, [connected, onCommand, onConnect, terminalSize, privacySettings]);
+
+  // Watch for privacy settings changes and display in terminal
+  useEffect(() => {
+    if (!xtermRef.current) return;
+
+    const terminal = xtermRef.current;
+
+    // Check if read receipts setting changed
+    if (prevPrivacySettings.showReadReceipts !== privacySettings.showReadReceipts) {
+      const status = privacySettings.showReadReceipts ? 'enabled' : 'disabled';
+      const color = privacySettings.showReadReceipts ? '32' : '31';
+      terminal.writeln(`\x1b[${color}m[PRIVACY]\x1b[0m Read receipts ${status} via settings`);
+
+      function showPrompt() {
+        const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
+        const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
+        terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
+      }
+      showPrompt();
+    }
+
+    // Check if online status setting changed
+    if (prevPrivacySettings.showOnlineStatus !== privacySettings.showOnlineStatus) {
+      const status = privacySettings.showOnlineStatus ? 'enabled' : 'disabled';
+      const color = privacySettings.showOnlineStatus ? '32' : '31';
+      terminal.writeln(`\x1b[${color}m[PRIVACY]\x1b[0m Online status visibility ${status} via settings`);
+
+      function showPrompt() {
+        const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
+        const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
+        terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
+      }
+      showPrompt();
+    }
+
+    setPrevPrivacySettings(privacySettings);
+  }, [privacySettings, prevPrivacySettings, connected]);
 
   const handleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
