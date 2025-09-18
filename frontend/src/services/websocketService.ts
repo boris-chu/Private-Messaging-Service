@@ -20,6 +20,7 @@ class WebSocketService {
   private listeners: Map<string, Function[]> = new Map();
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
   private authToken: string | null = null;
+  private manualDisconnect = false; // Track if user manually disconnected
 
   constructor() {
     this.authToken = localStorage.getItem('authToken');
@@ -32,6 +33,7 @@ class WebSocketService {
         return;
       }
 
+      this.manualDisconnect = false; // Reset manual disconnect flag when connecting
       this.connectionStatus = 'connecting';
       this.emit('connection_status', { status: 'connecting' });
 
@@ -73,7 +75,8 @@ class WebSocketService {
           this.connectionStatus = 'disconnected';
           this.emit('connection_status', { status: 'disconnected', code: event.code, reason: event.reason });
 
-          if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
+          // Only auto-reconnect if it wasn't a manual disconnect and connection wasn't clean
+          if (!this.manualDisconnect && !event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.scheduleReconnect();
           }
         };
@@ -94,6 +97,7 @@ class WebSocketService {
   }
 
   disconnect(): void {
+    this.manualDisconnect = true; // Mark as manual disconnect to prevent auto-reconnect
     if (this.ws) {
       this.ws.close(1000, 'User disconnected');
       this.ws = null;

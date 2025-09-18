@@ -402,13 +402,25 @@ export const Terminal: React.FC<TerminalProps> = ({
     // Set fixed terminal size and ensure proper scrolling
     terminal.resize(terminalSize.cols, terminalSize.rows);
 
-    // Force scroll to bottom after any output
+    // Force scroll to bottom after any output and ensure proper scrolling
     const originalWriteln = terminal.writeln.bind(terminal);
+    const originalWrite = terminal.write.bind(terminal);
+
     terminal.writeln = function(data: string | Uint8Array = '') {
       originalWriteln(data);
+      // Force scroll to bottom immediately and after a small delay
+      terminal.scrollToBottom();
       setTimeout(() => {
         terminal.scrollToBottom();
-      }, 0);
+      }, 10);
+    };
+
+    terminal.write = function(data: string | Uint8Array, callback?: () => void) {
+      originalWrite(data, callback);
+      // Ensure cursor is visible after writing
+      setTimeout(() => {
+        terminal.scrollToBottom();
+      }, 10);
     };
 
     return () => {
@@ -416,26 +428,37 @@ export const Terminal: React.FC<TerminalProps> = ({
       messageService.cleanup();
       terminal.dispose();
     };
-  }, [connected, onCommand, onConnect, privacySettings]);
+  }, [connected, onCommand, onConnect]);
 
   // Watch for privacy settings changes and display in terminal
   useEffect(() => {
-    if (!xtermRef.current) return;
+    // Skip if this is the initial setup (prevent showing changes on page load)
+    if (prevPrivacySettings.showReadReceipts === privacySettings.showReadReceipts &&
+        prevPrivacySettings.showOnlineStatus === privacySettings.showOnlineStatus) {
+      return;
+    }
+
+    if (!xtermRef.current) {
+      setPrevPrivacySettings(privacySettings);
+      return;
+    }
 
     const terminal = xtermRef.current;
 
-    // Check if read receipts setting changed
+    // Check if read receipts setting changed (but only if we have a real change, not initial load)
     if (prevPrivacySettings.showReadReceipts !== privacySettings.showReadReceipts) {
       const status = privacySettings.showReadReceipts ? 'enabled' : 'disabled';
       const color = privacySettings.showReadReceipts ? '32' : '31';
-      terminal.writeln(`\x1b[${color}m[PRIVACY]\x1b[0m Read receipts ${status} via settings`);
 
-      function showPrompt() {
-        const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
-        const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
-        terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
-      }
-      showPrompt();
+      // Only show "via settings" if this change came from outside the terminal commands
+      // The terminal commands already show their own feedback
+      const changeSource = 'via settings';
+      terminal.writeln(`\x1b[${color}m[PRIVACY]\x1b[0m Read receipts ${status} ${changeSource}`);
+
+      // Show new prompt
+      const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
+      const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
+      terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
     }
 
     // Check if online status setting changed
@@ -444,16 +467,14 @@ export const Terminal: React.FC<TerminalProps> = ({
       const color = privacySettings.showOnlineStatus ? '32' : '31';
       terminal.writeln(`\x1b[${color}m[PRIVACY]\x1b[0m Online status visibility ${status} via settings`);
 
-      function showPrompt() {
-        const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
-        const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
-        terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
-      }
-      showPrompt();
+      // Show new prompt
+      const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
+      const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
+      terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
     }
 
     setPrevPrivacySettings(privacySettings);
-  }, [privacySettings, prevPrivacySettings, connected]);
+  }, [privacySettings]);
 
   const handleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -558,14 +579,18 @@ export const Terminal: React.FC<TerminalProps> = ({
           },
           '& .xterm-viewport': {
             backgroundColor: 'transparent !important',
-            scrollBehavior: 'smooth',
-            overflowY: 'auto !important'
+            overflowY: 'scroll !important',
+            scrollBehavior: 'auto' // Changed from smooth to auto for immediate scrolling
           },
           '& .xterm-screen': {
             backgroundColor: 'transparent !important'
           },
           '& .xterm-rows': {
-            minHeight: '100%'
+            display: 'block !important'
+          },
+          '& .xterm-helper-textarea': {
+            position: 'absolute !important',
+            left: '-9999px !important'
           }
         }}
       />
