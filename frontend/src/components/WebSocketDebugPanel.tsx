@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { WebSocketMessage } from '../services/websocketService';
 import {
   Box,
   Paper,
@@ -29,12 +30,6 @@ interface DebugEvent {
   description: string;
 }
 
-interface WebSocketMessage {
-  type?: string;
-  data?: unknown;
-  timestamp?: number;
-  sender?: string;
-}
 
 interface WebSocketDebugPanelProps {
   websocketService: {
@@ -377,7 +372,7 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {JSON.stringify(event.data ?? {})}
+                    {String(JSON.stringify(event.data ?? {}))}
                   </Box>
                 )}
               </Box>

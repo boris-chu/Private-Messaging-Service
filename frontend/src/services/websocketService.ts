@@ -9,7 +9,7 @@ interface MessageData {
   [key: string]: unknown;
 }
 
-interface WebSocketMessage {
+export interface WebSocketMessage {
   type: 'message' | 'user_joined' | 'user_left' | 'user_list' | 'connection_status' | 'error' | 'auth' | 'user_list_request' | 'message_read' | 'message_delivered' | 'public_key_exchange' | 'public_key_request' | 'encrypted_message';
   data: MessageData;
   timestamp: number;
