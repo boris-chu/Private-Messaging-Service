@@ -55,7 +55,11 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   onlineUserCount = 0
 }) => {
   const { privacySettings, colorMode, setColorMode } = useTheme();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Load cached messages on component mount
+    const cachedMessages = localStorage.getItem('axol-chat-messages');
+    return cachedMessages ? JSON.parse(cachedMessages) : [];
+  });
   const [inputMessage, setInputMessage] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(connected);
@@ -73,6 +77,11 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
       setUser(JSON.parse(userData));
     }
   }, []);
+
+  // Persist messages to localStorage whenever messages change
+  useEffect(() => {
+    localStorage.setItem('axol-chat-messages', JSON.stringify(messages));
+  }, [messages]);
 
   // Menu handlers
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {

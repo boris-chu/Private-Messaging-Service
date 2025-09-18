@@ -38,6 +38,16 @@ export const DashboardPage: React.FC = () => {
       return;
     }
     setUser(JSON.parse(userData));
+
+    // Auto-reconnect to chat if user was previously connected
+    const wasConnected = localStorage.getItem('axol-was-connected');
+    if (wasConnected === 'true') {
+      // Small delay to ensure components are ready
+      setTimeout(() => {
+        console.log('Auto-reconnecting to chat...');
+        setConnected(websocketService.isConnected);
+      }, 1000);
+    }
   }, [navigate]);
 
   const handleSettings = () => {
@@ -45,8 +55,14 @@ export const DashboardPage: React.FC = () => {
   };
 
   const handleLogout = () => {
+    // Disconnect from websocket before logout
+    websocketService.disconnect();
+    // Clear connection state and all user data
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('axol-chat-messages'); // Clear message cache
+    localStorage.removeItem('axol-terminal-messages'); // Clear terminal message cache
+    localStorage.removeItem('axol-was-connected'); // Clear connection state
     navigate('/login');
   };
 
@@ -56,6 +72,9 @@ export const DashboardPage: React.FC = () => {
     // Clear all user data
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('axol-chat-messages'); // Clear message cache
+    localStorage.removeItem('axol-terminal-messages'); // Clear terminal message cache
+    localStorage.removeItem('axol-was-connected'); // Clear connection state
     localStorage.removeItem('axol-chat-theme');
     localStorage.removeItem('axol-color-mode');
     localStorage.removeItem('axol-privacy-settings');
@@ -66,6 +85,8 @@ export const DashboardPage: React.FC = () => {
   const handleConnect = useCallback(() => {
     console.log('Connecting to WebSocket...');
     setConnected(websocketService.isConnected);
+    // Save connection state for auto-reconnect
+    localStorage.setItem('axol-was-connected', 'true');
   }, []);
 
   const handleCommand = useCallback((command: string) => {
@@ -75,7 +96,12 @@ export const DashboardPage: React.FC = () => {
   // Listen for WebSocket connection changes
   useEffect(() => {
     const handleConnectionStatus = (data: ConnectionStatusData) => {
-      setConnected(data.status === 'connected');
+      const isConnected = data.status === 'connected';
+      setConnected(isConnected);
+      // Save connection state for auto-reconnect (but not for manual disconnects)
+      if (isConnected) {
+        localStorage.setItem('axol-was-connected', 'true');
+      }
     };
 
     const handleUserList = (data: UserListData) => {

@@ -54,6 +54,11 @@ export const Terminal: React.FC<TerminalProps> = ({
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   // Removed fixed terminal size - now using fit addon for dynamic sizing
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
+  const [terminalMessages, setTerminalMessages] = useState<string[]>(() => {
+    // Load cached terminal messages on component mount
+    const cachedTerminalMessages = localStorage.getItem('axol-terminal-messages');
+    return cachedTerminalMessages ? JSON.parse(cachedTerminalMessages) : [];
+  });
   const [prevPrivacySettings, setPrevPrivacySettings] = useState(privacySettings);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -66,6 +71,19 @@ export const Terminal: React.FC<TerminalProps> = ({
       setUser(JSON.parse(userData));
     }
   }, []);
+
+  // Persist terminal messages to localStorage
+  useEffect(() => {
+    localStorage.setItem('axol-terminal-messages', JSON.stringify(terminalMessages));
+  }, [terminalMessages]);
+
+  // Helper function to add message to terminal and history
+  const addTerminalMessage = (message: string) => {
+    if (xtermRef.current) {
+      xtermRef.current.writeln(message);
+      setTerminalMessages(prev => [...prev, message]);
+    }
+  };
 
   // Menu handlers
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -159,6 +177,16 @@ export const Terminal: React.FC<TerminalProps> = ({
 
     terminal.writeln('Type \x1b[32mhelp\x1b[0m for available commands');
     terminal.writeln('');
+
+    // Restore message history on terminal initialization
+    if (terminalMessages.length > 0) {
+      terminal.writeln('\x1b[90m[RESTORING MESSAGE HISTORY]\x1b[0m');
+      terminal.writeln('');
+      terminalMessages.forEach(message => {
+        terminal.writeln(message);
+      });
+      terminal.writeln('');
+    }
     showPrompt();
 
     // Handle user input
@@ -245,6 +273,7 @@ export const Terminal: React.FC<TerminalProps> = ({
               .then(() => {
                 terminal.writeln('\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection established');
                 terminal.writeln('\x1b[32m[CRYPTO]\x1b[0m RSA-OAEP 2048-bit end-to-end encryption initialized');
+                localStorage.setItem('axol-was-connected', 'true'); // Save connection state
                 messageService.requestUserList();
                 ((terminal as ExtendedTerminal)._onConnect || onConnect)?.();
               })
@@ -260,6 +289,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           if (messageService.isConnected) {
             terminal.writeln('\x1b[33mDisconnecting from server...\x1b[0m');
             messageService.disconnect();
+            localStorage.removeItem('axol-was-connected'); // Clear connection state on manual disconnect
             terminal.writeln('\x1b[31m[DISCONNECTED]\x1b[0m Connection closed');
           } else {
             terminal.writeln('\x1b[31mNot connected to server\x1b[0m');
@@ -387,7 +417,8 @@ export const Terminal: React.FC<TerminalProps> = ({
         const timestamp = new Date(message.timestamp).toLocaleTimeString();
         const encryptionIndicator = message.isEncrypted ? '\x1b[32m[🔒]\x1b[0m' : '\x1b[31m[📢]\x1b[0m';
         const errorIndicator = message.encryptionError ? '\x1b[31m[❌]\x1b[0m' : '';
-        terminal.writeln(`\x1b[34m[${timestamp}]\x1b[0m ${encryptionIndicator}${errorIndicator} \x1b[36m${message.sender}\x1b[0m: ${message.content}`);
+        const messageText = `\x1b[34m[${timestamp}]\x1b[0m ${encryptionIndicator}${errorIndicator} \x1b[36m${message.sender}\x1b[0m: ${message.content}`;
+        addTerminalMessage(messageText);
         showPrompt();
       },
       onMessageStatusUpdate: (messageId: string, status: MessageStatus) => {
