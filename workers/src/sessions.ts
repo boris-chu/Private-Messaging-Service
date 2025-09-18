@@ -13,6 +13,8 @@ export class SessionManager {
     switch (url.pathname) {
       case '/register':
         return this.registerUser(request);
+      case '/anonymous':
+        return this.registerAnonymousUser(request);
       case '/user':
         return this.getUser(request);
       case '/users':
@@ -135,6 +137,68 @@ export class SessionManager {
     }
   }
 
+  private async registerAnonymousUser(request: Request): Promise<Response> {
+    try {
+      const { username, displayName, sessionId, sessionToken, isAnonymous } = await request.json();
+
+      // Basic validation
+      if (!username || !displayName || !sessionId) {
+        return new Response(JSON.stringify({
+          error: 'Username, displayName, and sessionId are required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (this.users.has(username)) {
+        return new Response(JSON.stringify({
+          error: 'Username already exists'
+        }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const userData: UserData = {
+        username,
+        password: '', // Anonymous users don't have passwords
+        email: `${username}@anonymous.local`,
+        fullName: displayName,
+        company: 'Anonymous User',
+        registeredAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        status: 'online',
+        isAnonymous: true,
+        sessionId,
+        sessionToken
+      };
+
+      this.users.set(username, userData);
+      await this.saveState();
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Anonymous user registered successfully',
+        user: {
+          username: userData.username,
+          displayName: userData.fullName,
+          isAnonymous: userData.isAnonymous,
+          sessionId: userData.sessionId
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Anonymous registration failed'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
   async updateUserStatus(username: string, status: 'online' | 'offline'): Promise<void> {
     const user = this.users.get(username);
     if (user) {
@@ -154,4 +218,7 @@ interface UserData {
   registeredAt: string;
   lastSeen: string;
   status: 'online' | 'offline';
+  isAnonymous?: boolean;
+  sessionId?: string;
+  sessionToken?: string;
 }

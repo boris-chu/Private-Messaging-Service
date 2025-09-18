@@ -46,7 +46,9 @@ export default {
         endpoints: {
           auth: '/api/v1/auth/*',
           users: '/api/v1/users/*',
-          websocket: 'ws://*/api/v1/ws'
+          websocket: 'ws://*/api/v1/ws',
+          anonymous: '/api/v1/auth/anonymous',
+          availability: '/api/v1/users/check-availability/{username}'
         }
       }), {
         headers: {
@@ -84,6 +86,8 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
       return handleUserLogin(request, env);
     case path === '/auth/logout':
       return handleUserLogout(request, env);
+    case path === '/auth/anonymous':
+      return handleAnonymousLogin(request, env);
 
     // User management endpoints
     case path.startsWith('/users/'):
@@ -109,7 +113,9 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
         available: [
           '/api/v1/auth/register',
           '/api/v1/auth/login',
+          '/api/v1/auth/anonymous',
           '/api/v1/users',
+          '/api/v1/users/check-availability/{username}',
           '/api/v1/ws',
           '/api/v1/connections'
         ]
@@ -282,6 +288,12 @@ async function handleUserLogin(request: Request, env: Env): Promise<Response> {
 }
 
 async function handleUserLookup(request: Request, env: Env, path: string): Promise<Response> {
+  // Handle username availability checking: /users/check-availability/username
+  if (path.startsWith('/users/check-availability/')) {
+    const username = path.replace('/users/check-availability/', '');
+    return handleUsernameAvailability(request, env, username);
+  }
+
   // Extract username from path: /users/username
   const username = path.replace('/users/', '');
 
@@ -356,6 +368,145 @@ async function handleConnectionsAPI(request: Request, env: Env): Promise<Respons
       'Content-Type': 'application/json',
     },
   });
+}
+
+async function handleAnonymousLogin(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const { username, displayName, sessionId } = await request.json();
+
+    // Basic validation
+    if (!username || !displayName || !sessionId) {
+      return new Response(JSON.stringify({
+        error: 'Username, displayName, and sessionId are required'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // Generate a session token for the anonymous user
+    const sessionToken = `anon-${sessionId}-${Date.now()}`;
+
+    // Store anonymous session in sessions manager
+    const sessionObjectId = env.SESSIONS.idFromName('global');
+    const sessionObject = env.SESSIONS.get(sessionObjectId);
+
+    const response = await sessionObject.fetch('http://session/anonymous', {
+      method: 'POST',
+      body: JSON.stringify({
+        username,
+        displayName,
+        sessionId,
+        sessionToken,
+        isAnonymous: true
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      return new Response(error, {
+        status: response.status,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+        },
+      });
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      sessionToken,
+      user: {
+        username,
+        displayName,
+        isAnonymous: true,
+        sessionId
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Anonymous login failed'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
+  }
+}
+
+async function handleUsernameAvailability(request: Request, env: Env, username: string): Promise<Response> {
+  if (!username) {
+    return new Response(JSON.stringify({
+      error: 'Username required'
+    }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+
+  try {
+    const sessionId = env.SESSIONS.idFromName('global');
+    const sessionObject = env.SESSIONS.get(sessionId);
+
+    const response = await sessionObject.fetch(`http://session/user?username=${username}`);
+
+    // If user exists, username is not available
+    if (response.ok) {
+      return new Response(JSON.stringify({
+        available: false,
+        username,
+        message: 'Username is already taken'
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    // If user doesn't exist (404), username is available
+    if (response.status === 404) {
+      return new Response(JSON.stringify({
+        available: true,
+        username,
+        message: 'Username is available'
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    // Any other error, return as server error
+    return new Response(JSON.stringify({
+      error: 'Username availability check failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: 'Username availability check failed'
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
 }
 
 async function verifyTurnstileToken(token: string, ip: string, secretKey?: string): Promise<boolean> {
