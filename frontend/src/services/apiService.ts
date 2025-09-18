@@ -1,4 +1,4 @@
-// API Service for SecureMsg with versioned endpoints
+// API Service for Axol Chat with versioned endpoints
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 const API_VERSION = 'v1';

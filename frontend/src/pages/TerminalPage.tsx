@@ -25,7 +25,7 @@ export const TerminalPage: React.FC = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            SecureMsg Terminal
+            Axol Chat
           </Typography>
           <Chip
             label="Connected as demo"
@@ -49,7 +49,7 @@ export const TerminalPage: React.FC = () => {
         overflow: 'auto'
       }}>
         <Typography variant="body2" sx={{ color: '#00d4aa', fontFamily: 'monospace' }}>
-          SecureMsg Terminal v1.0 - Secure Messaging Interface
+          Axol Chat v1.0 - Private talk, under the shell.
         </Typography>
         <Typography variant="body2" sx={{ color: '#b0b0b0', fontFamily: 'monospace', mt: 1 }}>
           Type /help for available commands

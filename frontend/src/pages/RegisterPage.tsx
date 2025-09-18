@@ -98,7 +98,7 @@ export const RegisterPage: React.FC = () => {
               Create Account
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Join your company's secure messaging platform
+              Axol — private talk, under the shell.
             </Typography>
           </Box>
 

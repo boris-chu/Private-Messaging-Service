@@ -110,7 +110,7 @@ export const DashboardPage: React.FC = () => {
         <Toolbar>
           <Security sx={{ mr: 2, color: '#00d4aa' }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            SecureMsg
+            Axol Chat
           </Typography>
 
           {/* Connection Status */}

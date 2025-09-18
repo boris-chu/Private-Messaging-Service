@@ -91,10 +91,10 @@ export const LoginPage: React.FC = () => {
                 fontWeight: 600
               }}
             >
-              SecureMsg
+              Axol Chat
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Private Company Secure Messaging
+              Axol — private talk, under the shell.
             </Typography>
           </Box>
 
