@@ -31,7 +31,7 @@ export const Terminal: React.FC<TerminalProps> = ({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [terminalSize] = useState({ cols: 80, rows: 30 }); // Fixed size for stability
+  // Removed fixed terminal size - now using fit addon for dynamic sizing
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
   const [prevPrivacySettings, setPrevPrivacySettings] = useState(privacySettings);
 
@@ -403,19 +403,28 @@ export const Terminal: React.FC<TerminalProps> = ({
     });
     })();
 
-    // Set fixed terminal size and ensure proper scrolling
-    terminal.resize(terminalSize.cols, terminalSize.rows);
-
-    // Initial scroll to bottom after setup, then let xterm handle natural scrolling
+    // Fit terminal to container size for proper scrolling
     setTimeout(() => {
+      fitAddon.fit();
+      // Initial scroll to bottom after sizing
       terminal.scrollToBottom();
     }, 100);
 
     // Let xterm handle natural scrolling behavior like a real terminal
 
+    // Handle window resize to keep terminal properly fitted
+    const handleResize = () => {
+      if (fitAddon) {
+        setTimeout(() => fitAddon.fit(), 50);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
     return () => {
       // Clean up message service
       messageService.cleanup();
+      window.removeEventListener('resize', handleResize);
       terminal.dispose();
     };
   }, [connected, onCommand, onConnect]);
