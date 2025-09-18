@@ -56,7 +56,7 @@ export interface MessageServiceConfig {
   onUserJoined: (user: string) => void;
   onUserLeft: (user: string) => void;
   onUserListUpdate: (users: string[]) => void;
-  onConnectionStatusChange: (status: 'connected' | 'disconnected' | 'connecting') => void;
+  onConnectionStatusChange: (status: import('../components/ConnectionStatusIndicator').ConnectionStatus) => void;
   onEncryptionStateChange: (state: EncryptionState, details?: EncryptionDetails) => void;
 }
 
@@ -277,7 +277,7 @@ class MessageService {
   private handleConnectionStatus = (data: ConnectionStatusData) => {
     if (!this.config) return;
     // Map WebSocket status to our connection states
-    let status: 'connected' | 'disconnected' | 'connecting' = 'disconnected';
+    let status: import('../components/ConnectionStatusIndicator').ConnectionStatus = 'disconnected';
     if (data.status === 'connected' || data.connected === true) {
       status = 'connected';
     } else if (data.status === 'connecting') {

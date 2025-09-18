@@ -451,7 +451,7 @@ export const Terminal: React.FC<TerminalProps> = ({
       onUserListUpdate: (users: string[]) => {
         setOnlineUsers(users);
       },
-      onConnectionStatusChange: (status: 'connected' | 'disconnected' | 'connecting') => {
+      onConnectionStatusChange: (status: import('./ConnectionStatusIndicator').ConnectionStatus) => {
         if (status === 'connected') {
           terminal.writeln('\x1b[32m[SYSTEM]\x1b[0m WebSocket connection established');
         } else if (status === 'connecting') {

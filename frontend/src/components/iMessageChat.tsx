@@ -15,7 +15,6 @@ import {
 } from '@mui/material';
 import {
   Send,
-  Circle,
   DoneAll,
   Settings,
   Logout,
@@ -28,6 +27,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { EncryptionStatus, MessageEncryptionBadge } from './EncryptionStatus';
 import type { EncryptionState } from './EncryptionStatus';
 import { useChatMessages } from '../hooks/useChatStorage';
+import ConnectionStatusIndicator, { ConnectionStatus } from './ConnectionStatusIndicator';
 
 interface User {
   username: string;
@@ -63,7 +63,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   const [inputMessage, setInputMessage] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(connected);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [encryptionState, setEncryptionState] = useState<EncryptionState>('no-encryption');
   const [encryptedUserCount, setEncryptedUserCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -156,7 +156,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
       onUserListUpdate: (users: string[]) => {
         setOnlineUsers(users);
       },
-      onConnectionStatusChange: (status: 'connected' | 'disconnected' | 'connecting') => {
+      onConnectionStatusChange: (status: ConnectionStatus) => {
         setConnectionStatus(status);
         setIsConnected(status === 'connected');
       },
@@ -294,45 +294,11 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           </Box>
 
           {/* Connection Status */}
-          <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: { xs: 0.5, sm: 1.5 },
-            flexShrink: 0
-          }}>
-            {connectionStatus === 'connecting' ? (
-              <Box
-                sx={{
-                  width: 10,
-                  height: 10,
-                  border: '2px solid #FFA500',
-                  borderTop: '2px solid transparent',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                  '@keyframes spin': {
-                    '0%': { transform: 'rotate(0deg)' },
-                    '100%': { transform: 'rotate(360deg)' }
-                  }
-                }}
-              />
-            ) : (
-              <Circle
-                sx={{
-                  fontSize: 10,
-                  color: isConnected ? '#34C759' : '#FF3B30'
-                }}
-              />
-            )}
-            <Box sx={{
-              fontSize: { xs: '11px', sm: '13px' },
-              color: colors.textSecondary,
-              fontWeight: 500,
-              display: { xs: 'none', sm: 'block' } // Hide text on mobile, keep indicator
-            }}>
-              {connectionStatus === 'connected' ? 'Connected' :
-               connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
-            </Box>
-          </Box>
+          <ConnectionStatusIndicator
+            status={connectionStatus}
+            size="medium"
+            variant="header"
+          />
 
           {/* Online User Count */}
           {isConnected && onlineUserCount > 0 && (
