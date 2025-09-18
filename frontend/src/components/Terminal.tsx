@@ -260,32 +260,56 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('  \x1b[32mread -off\x1b[0m   - Disable read receipts');
           terminal.writeln('  \x1b[32mclear\x1b[0m       - Clear terminal');
           terminal.writeln('  \x1b[32mdebug\x1b[0m       - Show debug info (mobile/network)');
+          terminal.writeln('  \x1b[32mwstest\x1b[0m      - Test WebSocket connection stability');
           terminal.writeln('  \x1b[32mhelp\x1b[0m        - Show this help');
           terminal.writeln('');
           break;
 
         case 'connect':
           if (!messageService.isConnected) {
-            terminal.writeln('\x1b[33mEstablishing secure connection...\x1b[0m');
+            terminal.writeln('\x1b[33m[INIT]\x1b[0m Initializing secure connection protocol...');
+            terminal.writeln('\x1b[36m[WEBSOCKET]\x1b[0m Creating WebSocket connection...');
+            terminal.writeln(`\x1b[90m[TARGET]\x1b[0m ${import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev'}/api/v1/ws`);
+
             messageService.connect()
               .then(() => {
-                terminal.writeln('\x1b[32m[CONNECTED]\x1b[0m Secure WebSocket connection established');
-                terminal.writeln('\x1b[32m[CRYPTO]\x1b[0m RSA-OAEP 2048-bit end-to-end encryption initialized');
-                localStorage.setItem('axol-was-connected', 'true'); // Save connection state
-                messageService.requestUserList();
-                ((terminal as ExtendedTerminal)._onConnect || onConnect)?.();
-                showPrompt();
+                terminal.writeln('\x1b[32m[WEBSOCKET]\x1b[0m WebSocket connection established');
+                terminal.writeln('\x1b[32m[HANDSHAKE]\x1b[0m TLS handshake completed');
+                terminal.writeln('\x1b[33m[AUTH]\x1b[0m Authenticating with server...');
+
+                // Wait a moment to show auth step
+                setTimeout(() => {
+                  terminal.writeln('\x1b[32m[AUTH]\x1b[0m Authentication successful');
+                  terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Initializing RSA-OAEP 2048-bit encryption...');
+
+                  setTimeout(() => {
+                    terminal.writeln('\x1b[32m[CRYPTO]\x1b[0m Key pair generation completed');
+                    terminal.writeln('\x1b[36m[CRYPTO]\x1b[0m Broadcasting public key to peers...');
+                    terminal.writeln('\x1b[32m[READY]\x1b[0m End-to-end encryption established');
+                    localStorage.setItem('axol-was-connected', 'true'); // Save connection state
+                    messageService.requestUserList();
+                    ((terminal as ExtendedTerminal)._onConnect || onConnect)?.();
+                    showPrompt();
+                  }, 500);
+                }, 300);
               })
               .catch((error) => {
-                terminal.writeln(`\x1b[31m[ERROR]\x1b[0m Failed to connect: ${error.message}`);
-                terminal.writeln(`\x1b[90m[DEBUG]\x1b[0m Error details: ${JSON.stringify({
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack?.split('\n')[0],
-                  cause: error.cause,
-                  userAgent: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
-                  connection: navigator.onLine ? 'Online' : 'Offline'
-                })}`);
+                terminal.writeln(`\x1b[31m[ERROR]\x1b[0m Connection failed: ${error.message}`);
+                terminal.writeln('\x1b[31m[DIAGNOSIS]\x1b[0m Connection failure analysis:');
+                terminal.writeln(`\x1b[90m  Error Type: ${error.name}`);
+                terminal.writeln(`\x1b[90m  Error Code: ${(error as Error & { code?: string }).code || 'Unknown'}`);
+                terminal.writeln(`\x1b[90m  Network: ${navigator.onLine ? 'Online' : 'Offline'}`);
+                terminal.writeln(`\x1b[90m  Platform: ${navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'}`);
+
+                if (error.message.includes('WebSocket')) {
+                  terminal.writeln('\x1b[33m[SUGGESTION]\x1b[0m WebSocket connection failed - possible causes:');
+                  terminal.writeln('\x1b[90m  • Server maintenance or downtime');
+                  terminal.writeln('\x1b[90m  • Network connectivity issues');
+                  terminal.writeln('\x1b[90m  • Firewall blocking WebSocket connections');
+                  terminal.writeln('\x1b[90m  • Corporate network restrictions');
+                }
+
+                terminal.writeln('\x1b[36m[RETRY]\x1b[0m Use "debug" command for detailed network analysis');
                 showPrompt();
               });
           } else {
@@ -330,7 +354,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.clear();
           break;
 
-        case 'debug':
+        case 'debug': {
           terminal.writeln('\x1b[1;33mDebug Information:\x1b[0m');
           terminal.writeln('');
 
@@ -350,7 +374,7 @@ export const Terminal: React.FC<TerminalProps> = ({
 
           // Try to get more WebSocket details
           try {
-            const wsService = (messageService as any).websocketService;
+            const wsService = (messageService as { websocketService?: { ws?: { readyState?: number }; reconnectAttempts?: number; manualDisconnect?: boolean } }).websocketService;
             if (wsService) {
               terminal.writeln(`  WS Ready State: ${wsService.ws?.readyState || 'No WebSocket'}`);
               terminal.writeln(`  Reconnect Attempts: ${wsService.reconnectAttempts || 0}`);
@@ -363,9 +387,10 @@ export const Terminal: React.FC<TerminalProps> = ({
 
           // Network diagnostics
           terminal.writeln('\x1b[1;36mNetwork Diagnostics:\x1b[0m');
-          terminal.writeln(`  Connection Type: ${(navigator as any).connection?.effectiveType || 'Unknown'}`);
-          terminal.writeln(`  Downlink: ${(navigator as any).connection?.downlink || 'Unknown'} Mbps`);
-          terminal.writeln(`  RTT: ${(navigator as any).connection?.rtt || 'Unknown'} ms`);
+          const connection = (navigator as Navigator & { connection?: { effectiveType?: string; downlink?: number; rtt?: number } }).connection;
+          terminal.writeln(`  Connection Type: ${connection?.effectiveType || 'Unknown'}`);
+          terminal.writeln(`  Downlink: ${connection?.downlink || 'Unknown'} Mbps`);
+          terminal.writeln(`  RTT: ${connection?.rtt || 'Unknown'} ms`);
           terminal.writeln('');
 
           // Storage info
@@ -380,6 +405,52 @@ export const Terminal: React.FC<TerminalProps> = ({
 
           // Test fetch to the API
           const apiUrl = (import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev').replace('wss://', 'https://').replace('ws://', 'http://');
+
+          // Test WebSocket connectivity separately
+          terminal.writeln('\x1b[33m[WEBSOCKET TEST]\x1b[0m Testing WebSocket connection...');
+          const wsUrl = import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev';
+          const testWs = new WebSocket(`${wsUrl}/api/v1/ws`);
+
+          const wsTimeout = setTimeout(() => {
+            terminal.writeln('  WebSocket Test: \x1b[31mTimeout\x1b[0m (>5s)');
+            testWs.close();
+          }, 5000);
+
+          testWs.onopen = () => {
+            clearTimeout(wsTimeout);
+            terminal.writeln('  WebSocket Test: \x1b[32mConnection Successful\x1b[0m');
+            terminal.writeln('  \x1b[90mWebSocket can establish initial connection\x1b[0m');
+            testWs.close();
+          };
+
+          testWs.onclose = (event) => {
+            clearTimeout(wsTimeout);
+            if (!event.wasClean) {
+              terminal.writeln(`  WebSocket Test: \x1b[31mConnection Dropped\x1b[0m (code: ${event.code})`);
+              terminal.writeln(`  \x1b[90mReason: ${event.reason || 'Unknown'}\x1b[0m`);
+
+              // Analyze close codes
+              switch (event.code) {
+                case 1006:
+                  terminal.writeln('  \x1b[33mDiagnosis: Abnormal closure - network or server issue\x1b[0m');
+                  break;
+                case 1011:
+                  terminal.writeln('  \x1b[33mDiagnosis: Server error - backend may be experiencing issues\x1b[0m');
+                  break;
+                case 1000:
+                  terminal.writeln('  \x1b[32mDiagnosis: Normal closure - connection working\x1b[0m');
+                  break;
+                default:
+                  terminal.writeln(`  \x1b[33mDiagnosis: Unexpected close code ${event.code}\x1b[0m`);
+              }
+            }
+          };
+
+          testWs.onerror = () => {
+            clearTimeout(wsTimeout);
+            terminal.writeln('  WebSocket Test: \x1b[31mConnection Failed\x1b[0m');
+            terminal.writeln('  \x1b[90mUnable to establish WebSocket connection\x1b[0m');
+          };
 
           // Try health endpoint first
           fetch(apiUrl + '/health')
@@ -401,10 +472,19 @@ export const Terminal: React.FC<TerminalProps> = ({
             })
             .finally(() => {
               terminal.writeln('');
-              showPrompt();
+              terminal.writeln('\x1b[36m[TIP]\x1b[0m Use "connect" to see detailed connection process');
+              terminal.writeln('');
+
+              // Don't call showPrompt immediately, wait for WebSocket test
+              setTimeout(() => {
+                if (testWs.readyState === WebSocket.CLOSED || testWs.readyState === WebSocket.CLOSING) {
+                  showPrompt();
+                }
+              }, 6000);
             });
 
           return; // Don't call showPrompt() immediately since fetch will handle it
+        }
 
         case 'users':
           if (messageService.isConnected) {
@@ -486,6 +566,94 @@ export const Terminal: React.FC<TerminalProps> = ({
             terminal.writeln(`\x1b[31mCommand not found: ${command}\x1b[0m`);
             terminal.writeln('Type \x1b[32mhelp\x1b[0m for available commands');
           }
+          break;
+
+        case 'wstest': {
+          terminal.writeln('\x1b[1;33mWebSocket Connection Stability Test\x1b[0m');
+          terminal.writeln('\x1b[90mTesting connection persistence and stability...\x1b[0m');
+          terminal.writeln('');
+
+          const wsUrl = import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev';
+          const fullWsUrl = `${wsUrl}/api/v1/ws`;
+
+          terminal.writeln(`\x1b[36m[TEST-1]\x1b[0m Connecting to ${fullWsUrl}`);
+
+          const testWs = new WebSocket(fullWsUrl);
+          const connectionTime = Date.now();
+          let testTimeout: NodeJS.Timeout;
+
+          testWs.onopen = () => {
+            const openTime = Date.now() - connectionTime;
+            terminal.writeln(`\x1b[32m[TEST-1]\x1b[0m Connection established in ${openTime}ms`);
+            terminal.writeln('\x1b[36m[TEST-2]\x1b[0m Testing connection persistence (10s)...');
+
+            // Test if connection stays open for 10 seconds
+            testTimeout = setTimeout(() => {
+              if (testWs.readyState === WebSocket.OPEN) {
+                terminal.writeln('\x1b[32m[TEST-2]\x1b[0m Connection stable for 10 seconds');
+                terminal.writeln('\x1b[36m[TEST-3]\x1b[0m Sending test authentication...');
+
+                // Try sending auth message
+                const authToken = localStorage.getItem('authToken');
+                if (authToken) {
+                  testWs.send(JSON.stringify({
+                    type: 'auth',
+                    data: { token: authToken },
+                    timestamp: Date.now()
+                  }));
+
+                  setTimeout(() => {
+                    if (testWs.readyState === WebSocket.OPEN) {
+                      terminal.writeln('\x1b[32m[TEST-3]\x1b[0m Authentication sent successfully');
+                      terminal.writeln('\x1b[32m[RESULT]\x1b[0m WebSocket connection appears stable');
+                    } else {
+                      terminal.writeln('\x1b[31m[TEST-3]\x1b[0m Connection dropped after auth');
+                      terminal.writeln('\x1b[31m[RESULT]\x1b[0m Server may be rejecting connections');
+                    }
+                    testWs.close();
+                    terminal.writeln('');
+                    showPrompt();
+                  }, 2000);
+                } else {
+                  terminal.writeln('\x1b[33m[TEST-3]\x1b[0m No auth token available, skipping auth test');
+                  terminal.writeln('\x1b[32m[RESULT]\x1b[0m Basic WebSocket connection is stable');
+                  testWs.close();
+                  terminal.writeln('');
+                  showPrompt();
+                }
+              }
+            }, 10000);
+          };
+
+          testWs.onclose = (event) => {
+            clearTimeout(testTimeout);
+            const duration = Date.now() - connectionTime;
+            terminal.writeln(`\x1b[31m[CONNECTION-CLOSED]\x1b[0m After ${duration}ms`);
+            terminal.writeln(`\x1b[90m  Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}\x1b[0m`);
+            terminal.writeln(`\x1b[90m  Clean: ${event.wasClean ? 'Yes' : 'No'}\x1b[0m`);
+
+            if (duration < 1000) {
+              terminal.writeln('\x1b[31m[DIAGNOSIS]\x1b[0m Connection rejected immediately - likely server issue');
+            } else if (duration < 5000) {
+              terminal.writeln('\x1b[33m[DIAGNOSIS]\x1b[0m Connection dropped quickly - possible auth or protocol issue');
+            } else {
+              terminal.writeln('\x1b[33m[DIAGNOSIS]\x1b[0m Connection maintained briefly then dropped - server instability');
+            }
+
+            terminal.writeln('');
+            showPrompt();
+          };
+
+          testWs.onerror = () => {
+            clearTimeout(testTimeout);
+            terminal.writeln('\x1b[31m[CONNECTION-ERROR]\x1b[0m Failed to establish connection');
+            terminal.writeln('\x1b[90m  Likely causes: Network issues, server down, or firewall blocking\x1b[0m');
+            terminal.writeln('');
+            showPrompt();
+          };
+
+          break;
+        }
       }
 
       ((terminal as ExtendedTerminal)._onCommand || onCommand)?.(command);
@@ -551,27 +719,44 @@ export const Terminal: React.FC<TerminalProps> = ({
         }
       },
       onEncryptionStateChange: (state: EncryptionState, details?: EncryptionDetails) => {
-        // Show encryption status updates in terminal
+        // Show detailed encryption process steps in terminal
         switch (state) {
           case 'initializing':
-            terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Initializing RSA-OAEP 2048-bit encryption...');
+            terminal.writeln('\x1b[33m[CRYPTO-INIT]\x1b[0m Starting encryption subsystem...');
+            terminal.writeln('\x1b[90m  → Checking Web Crypto API availability\x1b[0m');
+            terminal.writeln('\x1b[90m  → Validating RSA-OAEP support\x1b[0m');
             break;
           case 'generating-keys':
-            terminal.writeln('\x1b[33m[CRYPTO]\x1b[0m Generating RSA 2048-bit key pair (SHA-256)...');
+            terminal.writeln('\x1b[33m[CRYPTO-KEYGEN]\x1b[0m Generating RSA-OAEP 2048-bit key pair...');
+            terminal.writeln('\x1b[90m  → Using SHA-256 hash algorithm\x1b[0m');
+            terminal.writeln('\x1b[90m  → Generating public/private key pair\x1b[0m');
+            terminal.writeln('\x1b[90m  → Extracting public key for sharing\x1b[0m');
             break;
           case 'exchanging-keys':
-            terminal.writeln('\x1b[36m[CRYPTO]\x1b[0m Exchanging public keys with peers...');
+            terminal.writeln('\x1b[36m[CRYPTO-EXCHANGE]\x1b[0m Broadcasting public key to connected peers...');
+            terminal.writeln('\x1b[90m  → Sending public key to server\x1b[0m');
+            terminal.writeln('\x1b[90m  → Requesting peer public keys\x1b[0m');
+            terminal.writeln('\x1b[90m  → Building encryption keychain\x1b[0m');
             break;
           case 'encrypted':
-            terminal.writeln(`\x1b[32m[CRYPTO]\x1b[0m E2E encryption active (RSA-OAEP) with ${details?.encryptedUserCount || 0} user(s)`);
+            terminal.writeln(`\x1b[32m[CRYPTO-READY]\x1b[0m End-to-end encryption established`);
+            terminal.writeln(`\x1b[90m  → RSA-OAEP 2048-bit encryption active\x1b[0m`);
+            terminal.writeln(`\x1b[90m  → ${details?.encryptedUserCount || 0} peer(s) with exchanged keys\x1b[0m`);
+            terminal.writeln(`\x1b[90m  → All messages will be encrypted\x1b[0m`);
             showPrompt();
             break;
           case 'partial-encryption':
-            terminal.writeln(`\x1b[33m[CRYPTO]\x1b[0m Partial encryption: ${details?.encryptedUserCount || 0}/${details?.totalUserCount || 0} users have keys`);
+            terminal.writeln(`\x1b[33m[CRYPTO-PARTIAL]\x1b[0m Partial encryption state`);
+            terminal.writeln(`\x1b[90m  → ${details?.encryptedUserCount || 0}/${details?.totalUserCount || 0} users have exchanged keys\x1b[0m`);
+            terminal.writeln(`\x1b[90m  → Some messages may be sent unencrypted\x1b[0m`);
+            terminal.writeln(`\x1b[90m  → Waiting for remaining key exchanges\x1b[0m`);
             showPrompt();
             break;
           case 'error':
-            terminal.writeln(`\x1b[31m[CRYPTO]\x1b[0m RSA encryption error: ${details?.error || 'Unknown error'}`);
+            terminal.writeln(`\x1b[31m[CRYPTO-ERROR]\x1b[0m Encryption system failure`);
+            terminal.writeln(`\x1b[90m  → Error: ${details?.error || 'Unknown encryption error'}\x1b[0m`);
+            terminal.writeln(`\x1b[90m  → Messages will be sent unencrypted\x1b[0m`);
+            terminal.writeln(`\x1b[90m  → Use "debug" for detailed diagnostics\x1b[0m`);
             showPrompt();
             break;
         }

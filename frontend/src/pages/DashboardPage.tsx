@@ -155,8 +155,8 @@ export const DashboardPage: React.FC = () => {
 
     const connectionStatusWrapper = (data: unknown) => handleConnectionStatus(data as ConnectionStatusData);
     const userListWrapper = (data: unknown) => handleUserList(data as UserListData);
-    const userJoinedWrapper = (_data: unknown) => handleUserJoined();
-    const userLeftWrapper = (_data: unknown) => handleUserLeft();
+    const userJoinedWrapper = () => handleUserJoined();
+    const userLeftWrapper = () => handleUserLeft();
 
     websocketService.on('connection_status', connectionStatusWrapper);
     websocketService.on('user_list', userListWrapper);
