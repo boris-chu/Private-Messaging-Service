@@ -259,6 +259,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('  \x1b[32mread -on\x1b[0m    - Enable read receipts');
           terminal.writeln('  \x1b[32mread -off\x1b[0m   - Disable read receipts');
           terminal.writeln('  \x1b[32mclear\x1b[0m       - Clear terminal');
+          terminal.writeln('  \x1b[32mdebug\x1b[0m       - Show debug info (mobile/network)');
           terminal.writeln('  \x1b[32mhelp\x1b[0m        - Show this help');
           terminal.writeln('');
           break;
@@ -277,6 +278,15 @@ export const Terminal: React.FC<TerminalProps> = ({
               })
               .catch((error) => {
                 terminal.writeln(`\x1b[31m[ERROR]\x1b[0m Failed to connect: ${error.message}`);
+                terminal.writeln(`\x1b[90m[DEBUG]\x1b[0m Error details: ${JSON.stringify({
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack?.split('\n')[0],
+                  cause: error.cause,
+                  userAgent: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
+                  connection: navigator.onLine ? 'Online' : 'Offline'
+                })}`);
+                showPrompt();
               });
           } else {
             terminal.writeln('\x1b[33mAlready connected to server\x1b[0m');
@@ -319,6 +329,69 @@ export const Terminal: React.FC<TerminalProps> = ({
         case 'clear':
           terminal.clear();
           break;
+
+        case 'debug':
+          terminal.writeln('\x1b[1;33mDebug Information:\x1b[0m');
+          terminal.writeln('');
+
+          // Environment info
+          terminal.writeln('\x1b[1;36mEnvironment:\x1b[0m');
+          terminal.writeln(`  User Agent: ${navigator.userAgent}`);
+          terminal.writeln(`  Platform: ${navigator.platform}`);
+          terminal.writeln(`  Mobile: ${navigator.userAgent.includes('Mobile') ? 'Yes' : 'No'}`);
+          terminal.writeln(`  Online: ${navigator.onLine ? 'Yes' : 'No'}`);
+          terminal.writeln(`  Language: ${navigator.language}`);
+          terminal.writeln('');
+
+          // WebSocket info
+          terminal.writeln('\x1b[1;36mConnection:\x1b[0m');
+          terminal.writeln(`  Connection Status: ${messageService.isConnected ? 'Connected' : 'Disconnected'}`);
+          terminal.writeln(`  WebSocket URL: ${process.env.NODE_ENV === 'production' ? 'wss://api.axolchat.com/ws' : 'ws://localhost:8080/ws'}`);
+
+          // Try to get more WebSocket details
+          try {
+            const wsService = (messageService as any).websocketService;
+            if (wsService) {
+              terminal.writeln(`  WS Ready State: ${wsService.ws?.readyState || 'No WebSocket'}`);
+              terminal.writeln(`  Reconnect Attempts: ${wsService.reconnectAttempts || 0}`);
+              terminal.writeln(`  Manual Disconnect: ${wsService.manualDisconnect ? 'Yes' : 'No'}`);
+            }
+          } catch (e) {
+            terminal.writeln(`  WS Details: Unable to access (${e.message})`);
+          }
+          terminal.writeln('');
+
+          // Network diagnostics
+          terminal.writeln('\x1b[1;36mNetwork Diagnostics:\x1b[0m');
+          terminal.writeln(`  Connection Type: ${(navigator as any).connection?.effectiveType || 'Unknown'}`);
+          terminal.writeln(`  Downlink: ${(navigator as any).connection?.downlink || 'Unknown'} Mbps`);
+          terminal.writeln(`  RTT: ${(navigator as any).connection?.rtt || 'Unknown'} ms`);
+          terminal.writeln('');
+
+          // Storage info
+          terminal.writeln('\x1b[1;36mStorage:\x1b[0m');
+          terminal.writeln(`  Auth Token: ${localStorage.getItem('authToken') ? 'Present' : 'Missing'}`);
+          terminal.writeln(`  Session Token: ${localStorage.getItem('sessionToken') ? 'Present' : 'Missing'}`);
+          terminal.writeln(`  Anonymous Session: ${localStorage.getItem('isAnonymousSession') ? 'Yes' : 'No'}`);
+
+          // Test basic connectivity
+          terminal.writeln('');
+          terminal.writeln('\x1b[33mTesting connectivity...\x1b[0m');
+
+          // Test fetch to the API
+          fetch(process.env.NODE_ENV === 'production' ? 'https://api.axolchat.com/health' : 'http://localhost:8080/health')
+            .then(response => {
+              terminal.writeln(`  API Health Check: ${response.ok ? '\x1b[32mOK\x1b[0m' : '\x1b[31mFailed\x1b[0m'} (${response.status})`);
+            })
+            .catch(error => {
+              terminal.writeln(`  API Health Check: \x1b[31mFailed\x1b[0m - ${error.message}`);
+            })
+            .finally(() => {
+              terminal.writeln('');
+              showPrompt();
+            });
+
+          return; // Don't call showPrompt() immediately since fetch will handle it
 
         case 'users':
           if (messageService.isConnected) {

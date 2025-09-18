@@ -135,7 +135,15 @@ class WebSocketService {
         };
 
         this.ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
+          console.error('WebSocket error:', {
+            error,
+            readyState: this.ws?.readyState,
+            url: this.ws?.url,
+            connectionStatus: this.connectionStatus,
+            userAgent: navigator.userAgent,
+            online: navigator.onLine,
+            timestamp: new Date().toISOString()
+          });
           this.emit('error', { error: 'WebSocket connection failed' });
           reject(new Error('WebSocket connection failed'));
         };
