@@ -91,6 +91,12 @@ const ciphertext = await crypto.subtle.encrypt(
 - **Iterations**: 100,000 minimum
 - **Memory**: 64 MB minimum
 
+**Bot Protection**: Cloudflare Turnstile
+- **Privacy-preserving**: No tracking or data collection
+- **Adaptive triggering**: Based on risk assessment
+- **Integration**: Native Cloudflare Workers verification
+- **Fallback**: Progressive security enhancement
+
 ### Device Authorization
 
 **Device Fingerprinting**:
@@ -214,6 +220,12 @@ const ciphertext = await crypto.subtle.encrypt(
 - Privilege escalation
 - Denial of service
 
+**Automated Attacks**:
+- Bot registration campaigns
+- Credential stuffing attacks
+- Account enumeration
+- Rate limiting bypass attempts
+
 ### Mitigation Strategies
 
 **Defense in Depth**:
@@ -222,10 +234,17 @@ const ciphertext = await crypto.subtle.encrypt(
 - Fail-secure defaults
 - Principle of least privilege
 
+**Bot Protection**:
+- Cloudflare Turnstile verification
+- Adaptive challenge presentation
+- IP reputation scoring
+- Behavioral analysis
+
 **Monitoring & Detection**:
 - Real-time anomaly detection
 - Failed authentication monitoring
 - Unusual traffic pattern alerts
+- Turnstile verification tracking
 - Security incident response plan
 
 ## 📋 Security Testing
@@ -243,6 +262,13 @@ const ciphertext = await crypto.subtle.encrypt(
 - Fuzzing critical components
 - Load testing security limits
 - Runtime security monitoring
+- Bot protection bypass testing
+
+**Turnstile Testing**:
+- Challenge presentation verification
+- Token validation testing
+- Rate limit integration testing
+- Adaptive behavior validation
 
 ### Manual Testing
 

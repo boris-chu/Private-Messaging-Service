@@ -28,9 +28,11 @@ This guide provides step-by-step instructions for implementing the **Cloudflare 
 
 ### Frontend (Cloudflare Pages)
 - **React** with TypeScript
+- **Material UI** for modern user interface
 - **xterm.js** for terminal interface
 - **WebCrypto API** for encryption
 - **Native WebSockets** for real-time communication
+- **Cloudflare Turnstile** for bot protection
 
 ### Backend (Cloudflare Workers)
 - **TypeScript** with Workers runtime
@@ -52,6 +54,8 @@ mkdir frontend workers docs
 cd frontend
 npm init -y
 npm install react react-dom typescript @types/react @types/react-dom
+npm install @mui/material @emotion/react @emotion/styled
+npm install @mui/icons-material @mui/lab
 npm install xterm @xterm/xterm
 npm install vite @vitejs/plugin-react
 
@@ -403,9 +407,131 @@ ENVIRONMENT = "production"
   "dependencies": {
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "@mui/material": "^5.15.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.0",
     "xterm": "^5.0.0"
   }
 }
+```
+
+### Material UI Theme Setup
+```tsx
+// frontend/src/theme.ts
+import { createTheme } from '@mui/material/styles';
+
+export const theme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#00d4aa', // Terminal green
+    },
+    secondary: {
+      main: '#ff6b35', // Warning orange
+    },
+    background: {
+      default: '#0a0a0a',
+      paper: '#1a1a1a',
+    },
+  },
+  typography: {
+    fontFamily: '"Inter", "Roboto", sans-serif',
+    h1: { fontFamily: '"Inter", sans-serif' },
+    body2: { fontFamily: '"JetBrains Mono", monospace' },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: { textTransform: 'none' },
+      },
+    },
+  },
+});
+```
+
+### App with Material UI Provider
+```tsx
+// frontend/src/App.tsx
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { theme } from './theme';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { TerminalPage } from './pages/TerminalPage';
+
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/terminal" element={<TerminalPage />} />
+          <Route path="/" element={<LoginPage />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
+  );
+}
+
+export default App;
+```
+
+### Turnstile Integration
+```tsx
+// frontend/src/components/TurnstileWidget.tsx
+import { useEffect, useRef } from 'react';
+
+declare global {
+  interface Window {
+    turnstile: any;
+  }
+}
+
+interface TurnstileWidgetProps {
+  siteKey: string;
+  onVerify: (token: string) => void;
+  theme?: 'light' | 'dark' | 'auto';
+}
+
+export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
+  siteKey,
+  onVerify,
+  theme = 'dark'
+}) => {
+  const widgetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Load Turnstile script
+    if (!document.querySelector('script[src*="turnstile"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    const checkTurnstile = () => {
+      if (widgetRef.current && window.turnstile) {
+        window.turnstile.render(widgetRef.current, {
+          sitekey: siteKey,
+          callback: onVerify,
+          theme,
+        });
+      } else {
+        setTimeout(checkTurnstile, 100);
+      }
+    };
+
+    checkTurnstile();
+  }, [siteKey, onVerify, theme]);
+
+  return <div ref={widgetRef} />;
+};
 ```
 
 ## Security Checklist
