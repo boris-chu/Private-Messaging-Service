@@ -855,6 +855,18 @@ export const Terminal: React.FC<TerminalProps> = ({
       xtermRef.current.clear();
       xtermRef.current.writeln('\x1b[32mTerminal refreshed\x1b[0m');
       xtermRef.current.writeln('');
+
+      // Show the prompt after refresh
+      const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
+      const status = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
+      xtermRef.current.write(`${status} \x1b[36m${user.username}@axol\x1b[0m \x1b[34m~\x1b[0m $ `);
+
+      // Ensure cursor stays visible
+      setTimeout(() => {
+        if (xtermRef.current) {
+          xtermRef.current.scrollToBottom();
+        }
+      }, 10);
     }
   };
 
