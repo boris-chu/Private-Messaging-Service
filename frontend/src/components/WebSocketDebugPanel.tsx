@@ -254,6 +254,37 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
     }
   };
 
+  const testBackendHttp = async () => {
+    addEvent({
+      type: 'system',
+      category: 'test',
+      data: { action: 'backend_http_test' },
+      description: 'Testing backend HTTP connectivity'
+    });
+
+    try {
+      const apiUrl = 'https://secure-messaging.boris-chu.workers.dev/api/v1/users';
+      console.log(`🧪 Testing backend HTTP: ${apiUrl}`);
+
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+
+      addEvent({
+        type: 'system',
+        category: 'test',
+        data: { response: data, status: response.status },
+        description: `HTTP test result: ${response.status} - ${JSON.stringify(data).substring(0, 100)}`
+      });
+    } catch (error) {
+      addEvent({
+        type: 'error',
+        category: 'test',
+        data: { error: error instanceof Error ? error.message : 'Unknown error' },
+        description: `HTTP test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
+  };
+
   if (!enabled) {
     return (
       <Tooltip title="Enable WebSocket Debugging">
@@ -408,7 +439,7 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
         </Box>
 
         {/* Actions */}
-        <Box sx={{ p: 1, bgcolor: 'background.default', borderTop: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ p: 1, bgcolor: 'background.default', borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Button
             fullWidth
             size="small"
@@ -417,6 +448,15 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
             onClick={testConnection}
           >
             Request User List
+          </Button>
+          <Button
+            fullWidth
+            size="small"
+            variant="outlined"
+            startIcon={<NetworkCheck />}
+            onClick={testBackendHttp}
+          >
+            Test Backend HTTP
           </Button>
         </Box>
       </Collapse>
