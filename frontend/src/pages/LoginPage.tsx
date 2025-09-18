@@ -75,20 +75,25 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{
+      minHeight: '100vh',
+      bgcolor: 'background.default',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
       <Container maxWidth="sm" sx={{
-        minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         px: { xs: 2, md: 3 },
         py: { xs: 2, md: 4 }
       }}>
-      <Card sx={{
-        width: '100%',
-        maxWidth: { xs: '100%', md: 400 },
-        mx: 'auto'
-      }}>
+        <Card sx={{
+          width: '100%',
+          maxWidth: { xs: '100%', md: 400 },
+          mx: 'auto'
+        }}>
         <CardContent sx={{ p: { xs: 3, md: 4 } }}>
           {/* Logo/Title */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -265,7 +270,7 @@ export const LoginPage: React.FC = () => {
             </Box>
           </Box>
         </CardContent>
-      </Card>
+        </Card>
       </Container>
 
       {/* Password Recovery Dialog */}

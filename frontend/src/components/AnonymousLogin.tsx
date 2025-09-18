@@ -35,7 +35,7 @@ import {
   cleanUsername,
   type AnonymousUser
 } from '../utils/anonymousUserGenerator';
-import { apiService } from '../services/apiService';
+// import { apiService } from '../services/apiService'; // Disabled for demo mode
 import { anonymousSessionManager } from '../utils/anonymousSessionManager';
 
 interface AnonymousLoginProps {
@@ -73,15 +73,10 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
         newUser = generateAnonymousUser();
         attempts++;
 
-        try {
-          const availability = await apiService.checkUsernameAvailability(newUser.username);
-          if (availability.available) {
-            break;
-          }
-        } catch {
-          // If API fails, continue with local generation for demo
-          if (attempts >= 3) break;
-        }
+        // For demo mode, assume all generated usernames are available
+        // In production, this would check against the backend API
+        console.log(`Generated username (demo mode): ${newUser.username}`);
+        break;
       } while (attempts < 5);
 
       const options = generateUsernameOptions(5);
@@ -139,44 +134,41 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
     setError(null);
 
     try {
-      // Check username availability one more time
-      const availability = await apiService.checkUsernameAvailability(anonymousUser.username);
-      if (!availability.available) {
-        setError('Username is no longer available. Please generate a new one.');
-        setIsJoining(false);
-        return;
-      }
+      console.log('Starting anonymous login process...', anonymousUser);
 
-      // Perform anonymous login with API
-      const response = await apiService.anonymousLogin({
+      // For now, skip API calls and work in demo mode
+      // This allows the frontend to function while backend anonymous endpoints are being developed
+      console.log('Working in demo mode - skipping API calls');
+
+      // Start session with session manager (offline mode)
+      console.log('Starting session with session manager...');
+      await anonymousSessionManager.startSession(
+        anonymousUser.username,
+        anonymousUser.displayName,
+        anonymousUser.sessionId
+      );
+
+      // Store user data for compatibility (demo mode)
+      const demoUser = {
         username: anonymousUser.username,
         displayName: anonymousUser.displayName,
+        isAnonymous: true,
         sessionId: anonymousUser.sessionId
-      });
+      };
 
-      if (response.success) {
-        // Start session with session manager
-        await anonymousSessionManager.startSession(
-          response.user.username,
-          response.user.displayName,
-          response.user.sessionId
-        );
+      localStorage.setItem('anonymousUser', JSON.stringify(demoUser));
+      localStorage.setItem('sessionToken', `demo-token-${anonymousUser.sessionId}`);
+      localStorage.setItem('authToken', `demo-auth-${anonymousUser.sessionId}`);
 
-        // Store additional data for compatibility
-        localStorage.setItem('anonymousUser', JSON.stringify(response.user));
-        localStorage.setItem('sessionToken', response.sessionToken);
+      console.log('Demo anonymous login successful, navigating to dashboard...');
 
-        // Navigate to dashboard
-        navigate('/dashboard');
-        onClose();
-      }
+      // Navigate to dashboard
+      navigate('/dashboard');
+      onClose();
+
     } catch (err) {
-      if (err instanceof Error && err.message.includes('no longer available')) {
-        setError('Username is no longer available. Please generate a new one.');
-      } else {
-        setError('Failed to join chat. Please try again.');
-      }
-      console.error('Anonymous login failed:', err);
+      console.error('Anonymous login error:', err);
+      setError('Failed to join chat. Please try again.');
     } finally {
       setIsJoining(false);
     }
@@ -380,6 +372,16 @@ export const AnonymousLogin: React.FC<AnonymousLoginProps> = ({ open, onClose })
                   )}
                 </Box>
               </Paper>
+
+              {/* Demo Mode Notice */}
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Demo Mode
+                </Typography>
+                <Typography variant="body2">
+                  Currently running in demo mode. Anonymous login will work locally without backend authentication.
+                </Typography>
+              </Alert>
 
               {/* Privacy Notice */}
               <Alert severity="info" icon={<Security />} sx={{ mb: 2 }}>
