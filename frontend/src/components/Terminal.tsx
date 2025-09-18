@@ -6,10 +6,7 @@ import { Box, Paper, IconButton, Tooltip } from '@mui/material';
 import {
   Fullscreen,
   FullscreenExit,
-  Refresh,
-  ZoomIn,
-  ZoomOut,
-  Height
+  Refresh
 } from '@mui/icons-material';
 import '@xterm/xterm/css/xterm.css';
 import { messageService } from '../services/messageService';
@@ -34,7 +31,7 @@ export const Terminal: React.FC<TerminalProps> = ({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [terminalSize, setTerminalSize] = useState({ cols: 80, rows: 30 }); // More vertical space
+  const [terminalSize] = useState({ cols: 80, rows: 30 }); // Fixed size for stability
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
   const [prevPrivacySettings, setPrevPrivacySettings] = useState(privacySettings);
 
@@ -402,15 +399,24 @@ export const Terminal: React.FC<TerminalProps> = ({
     });
     })();
 
-    // Set fixed terminal size instead of auto-fitting
+    // Set fixed terminal size and ensure proper scrolling
     terminal.resize(terminalSize.cols, terminalSize.rows);
+
+    // Force scroll to bottom after any output
+    const originalWriteln = terminal.writeln;
+    terminal.writeln = function(data?: string) {
+      originalWriteln.call(this, data);
+      setTimeout(() => {
+        this.scrollToBottom();
+      }, 0);
+    };
 
     return () => {
       // Clean up message service
       messageService.cleanup();
       terminal.dispose();
     };
-  }, [connected, onCommand, onConnect, terminalSize, privacySettings]);
+  }, [connected, onCommand, onConnect, privacySettings]);
 
   // Watch for privacy settings changes and display in terminal
   useEffect(() => {
@@ -466,47 +472,6 @@ export const Terminal: React.FC<TerminalProps> = ({
     }
   };
 
-  const handleZoomIn = () => {
-    const newSize = {
-      cols: Math.min(120, terminalSize.cols + 10),
-      rows: Math.min(50, terminalSize.rows + 5) // Increased max rows for more vertical space
-    };
-    setTerminalSize(newSize);
-    // Scroll to bottom after resize to keep input visible
-    setTimeout(() => {
-      if (xtermRef.current) {
-        xtermRef.current.scrollToBottom();
-      }
-    }, 100);
-  };
-
-  const handleZoomOut = () => {
-    const newSize = {
-      cols: Math.max(40, terminalSize.cols - 10),
-      rows: Math.max(15, terminalSize.rows - 5) // Increased min rows
-    };
-    setTerminalSize(newSize);
-    // Scroll to bottom after resize to keep input visible
-    setTimeout(() => {
-      if (xtermRef.current) {
-        xtermRef.current.scrollToBottom();
-      }
-    }, 100);
-  };
-
-  const handleVerticalStretch = () => {
-    const newSize = {
-      cols: terminalSize.cols,
-      rows: Math.min(50, terminalSize.rows + 10) // Just increase rows significantly
-    };
-    setTerminalSize(newSize);
-    // Scroll to bottom after resize to keep input visible
-    setTimeout(() => {
-      if (xtermRef.current) {
-        xtermRef.current.scrollToBottom();
-      }
-    }, 100);
-  };
 
   return (
     <Paper
@@ -535,22 +500,22 @@ export const Terminal: React.FC<TerminalProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           px: 2,
-          py: 1,
+          py: 1.5,
           bgcolor: '#161b22',
           borderBottom: '1px solid #30363d',
-          minHeight: '40px'
+          minHeight: '48px'
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box
             sx={{
-              width: 10,
-              height: 10,
+              width: 8,
+              height: 8,
               borderRadius: '50%',
               bgcolor: connected ? '#28ca42' : '#ff5f57'
             }}
           />
-          <Box sx={{ ml: 1, fontSize: '13px', color: '#8b949e' }}>
+          <Box sx={{ fontSize: '13px', color: '#8b949e', fontWeight: 500 }}>
             {connected ? 'Connected' : 'Disconnected'}
           </Box>
         </Box>
@@ -563,36 +528,6 @@ export const Terminal: React.FC<TerminalProps> = ({
               sx={{ color: '#8b949e', '&:hover': { color: '#00d4aa' } }}
             >
               <Refresh fontSize="small" />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Zoom Out">
-            <IconButton
-              size="small"
-              onClick={handleZoomOut}
-              sx={{ color: '#8b949e', '&:hover': { color: '#00d4aa' } }}
-            >
-              <ZoomOut fontSize="small" />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Zoom In">
-            <IconButton
-              size="small"
-              onClick={handleZoomIn}
-              sx={{ color: '#8b949e', '&:hover': { color: '#00d4aa' } }}
-            >
-              <ZoomIn fontSize="small" />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Stretch Vertically">
-            <IconButton
-              size="small"
-              onClick={handleVerticalStretch}
-              sx={{ color: '#8b949e', '&:hover': { color: '#00d4aa' } }}
-            >
-              <Height fontSize="small" />
             </IconButton>
           </Tooltip>
 
@@ -617,18 +552,20 @@ export const Terminal: React.FC<TerminalProps> = ({
           overflow: 'hidden',
           '& .xterm': {
             height: '100% !important',
-            padding: '10px',
-            paddingBottom: '20px' // Extra padding at bottom to prevent text cutoff
+            padding: '16px',
+            paddingTop: '12px',
+            paddingBottom: '20px'
           },
           '& .xterm-viewport': {
             backgroundColor: 'transparent !important',
-            scrollBehavior: 'smooth'
+            scrollBehavior: 'smooth',
+            overflowY: 'auto !important'
           },
           '& .xterm-screen': {
             backgroundColor: 'transparent !important'
           },
-          '& .xterm-scroll-area': {
-            marginBottom: '20px' // Ensure scroll area doesn't hide input
+          '& .xterm-rows': {
+            minHeight: '100%'
           }
         }}
       />
