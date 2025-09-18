@@ -17,7 +17,7 @@ interface AnonymousSession {
 
 class AnonymousSessionManager {
   private session: AnonymousSession | null = null;
-  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private heartbeatInterval: number | null = null;
   private beforeUnloadHandler: (() => void) | null = null;
 
   /**

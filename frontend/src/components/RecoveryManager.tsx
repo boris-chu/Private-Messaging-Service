@@ -5,11 +5,11 @@ import {
   Typography,
   Button,
   Alert,
-  Grid,
   Chip,
   IconButton,
   Tooltip
 } from '@mui/material';
+import Grid from '@mui/material/Grid2';
 import {
   Security,
   Key,
@@ -189,7 +189,7 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
             {showPhrase ? (
               <Grid container spacing={1}>
                 {recoveryPhrase.map((word, index) => (
-                  <Grid item xs={6} sm={4} md={3} key={index}>
+                  <Grid xs={6} sm={4} md={3} key={index}>
                     <Chip
                       label={`${index + 1}. ${word}`}
                       variant="outlined"
@@ -233,7 +233,7 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
             {showCodes ? (
               <Grid container spacing={1}>
                 {recoveryCodes.map((code, index) => (
-                  <Grid item xs={12} sm={6} key={index}>
+                  <Grid xs={12} sm={6} key={index}>
                     <Paper
                       variant="outlined"
                       sx={{

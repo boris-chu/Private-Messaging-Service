@@ -6,6 +6,7 @@ interface TurnstileAPI {
     callback?: (token: string) => void;
     'error-callback'?: () => void;
     theme?: string;
+    size?: string;
   }) => string;
   remove: (widgetId: string) => void;
   reset?: (container: string | HTMLElement) => void;

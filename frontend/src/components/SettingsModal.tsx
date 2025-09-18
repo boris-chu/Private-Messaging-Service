@@ -37,7 +37,6 @@ import {
   Security,
   Key,
   Download,
-  Visibility,
   VisibilityOff
 } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
