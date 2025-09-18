@@ -32,6 +32,7 @@ export const DashboardPage: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<any>(null);
   const [connected, setConnected] = useState(false);
+  const [onlineUserCount, setOnlineUserCount] = useState(0);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -71,13 +72,31 @@ export const DashboardPage: React.FC = () => {
       setConnected(data.status === 'connected');
     };
 
+    const handleUserList = (data: any) => {
+      setOnlineUserCount(data.users ? data.users.length : 0);
+    };
+
+    const handleUserJoined = () => {
+      websocketService.requestUserList();
+    };
+
+    const handleUserLeft = () => {
+      websocketService.requestUserList();
+    };
+
     websocketService.on('connection_status', handleConnectionStatus);
+    websocketService.on('user_list', handleUserList);
+    websocketService.on('user_joined', handleUserJoined);
+    websocketService.on('user_left', handleUserLeft);
 
     // Set initial connection state
     setConnected(websocketService.isConnected);
 
     return () => {
       websocketService.off('connection_status', handleConnectionStatus);
+      websocketService.off('user_list', handleUserList);
+      websocketService.off('user_joined', handleUserJoined);
+      websocketService.off('user_left', handleUserLeft);
     };
   }, []);
 
@@ -147,31 +166,9 @@ export const DashboardPage: React.FC = () => {
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Fade in timeout={800}>
           <Box>
-            {/* Welcome Section */}
-            <Paper
-              elevation={2}
-              sx={{
-                p: 3,
-                mb: 4,
-                bgcolor: 'background.paper',
-                borderRadius: 2
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Security sx={{ fontSize: 32, color: '#00d4aa' }} />
-                <Box>
-                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                    Welcome, {user.fullName || user.username}
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    Secure messaging terminal ready for encrypted communication
-                  </Typography>
-                </Box>
-              </Box>
-            </Paper>
 
             {/* Stats Cards */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 3, mb: 4 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3, mb: 4 }}>
               <Card elevation={2}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -179,35 +176,7 @@ export const DashboardPage: React.FC = () => {
                     <Box>
                       <Typography variant="h6">Online Users</Typography>
                       <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                        {connected ? '3' : '0'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-
-              <Card elevation={2}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Message sx={{ fontSize: 40, color: '#00d4aa' }} />
-                    <Box>
-                      <Typography variant="h6">Messages</Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                        12
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-
-              <Card elevation={2}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Security sx={{ fontSize: 40, color: '#8b5cf6' }} />
-                    <Box>
-                      <Typography variant="h6">Encryption</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#00d4aa' }}>
-                        AES-256
+                        {connected ? onlineUserCount : '0'}
                       </Typography>
                     </Box>
                   </Box>
@@ -238,7 +207,7 @@ export const DashboardPage: React.FC = () => {
                       />
                     </Box>
                     <Box>
-                      <Typography variant="h6">Status</Typography>
+                      <Typography variant="h6">Connection Status</Typography>
                       <Typography
                         variant="body2"
                         sx={{
@@ -246,7 +215,7 @@ export const DashboardPage: React.FC = () => {
                           color: connected ? '#28ca42' : '#ff5f57'
                         }}
                       >
-                        {connected ? 'Connected' : 'Offline'}
+                        {connected ? 'Connected' : 'Disconnected'}
                       </Typography>
                     </Box>
                   </Box>
