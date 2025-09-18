@@ -4,8 +4,9 @@ interface TurnstileAPI {
   render: (container: string | HTMLElement, options: {
     sitekey: string;
     callback?: (token: string) => void;
-    'error-callback'?: () => void;
+    'error-callback'?: (error?: string) => void;
     'expired-callback'?: () => void;
+    'timeout-callback'?: () => void;
     theme?: string;
     size?: string;
   }) => string;
@@ -70,7 +71,7 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
             callback: onVerify,
             theme,
             size,
-            'error-callback': (error: string) => {
+            'error-callback': (error?: string) => {
               console.error('Turnstile verification error:', error);
             },
             'expired-callback': () => {

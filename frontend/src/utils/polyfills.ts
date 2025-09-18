@@ -2,6 +2,16 @@
  * Polyfills for deprecated browser APIs
  */
 
+// Extend Window interface to include deprecated styleMedia property
+declare global {
+  interface Window {
+    styleMedia?: {
+      type: string;
+      matchMedium: (mediaQuery: string) => boolean;
+    };
+  }
+}
+
 // Fix for deprecated window.styleMedia API
 // Some libraries still use window.styleMedia which was deprecated in favor of window.matchMedia
 if (typeof window !== 'undefined' && !window.styleMedia && window.matchMedia) {
