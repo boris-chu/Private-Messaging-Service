@@ -8,7 +8,8 @@ import {
   FullscreenExit,
   Refresh,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  Height
 } from '@mui/icons-material';
 import '@xterm/xterm/css/xterm.css';
 import { messageService } from '../services/messageService';
@@ -33,7 +34,7 @@ export const Terminal: React.FC<TerminalProps> = ({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [terminalSize, setTerminalSize] = useState({ cols: 80, rows: 24 });
+  const [terminalSize, setTerminalSize] = useState({ cols: 80, rows: 30 }); // More vertical space
   const [sentMessages, setSentMessages] = useState<Map<string, Message>>(new Map());
 
   useEffect(() => {
@@ -72,8 +73,9 @@ export const Terminal: React.FC<TerminalProps> = ({
       cursorStyle: 'block',
       allowTransparency: false,
       macOptionIsMeta: true,
-      scrollback: 1000,
-      tabStopWidth: 4
+      scrollback: 10000, // Increased scrollback buffer
+      tabStopWidth: 4,
+      convertEol: true
     });
 
     // Add addons
@@ -385,17 +387,43 @@ export const Terminal: React.FC<TerminalProps> = ({
   const handleZoomIn = () => {
     const newSize = {
       cols: Math.min(120, terminalSize.cols + 10),
-      rows: Math.min(40, terminalSize.rows + 3)
+      rows: Math.min(50, terminalSize.rows + 5) // Increased max rows for more vertical space
     };
     setTerminalSize(newSize);
+    // Scroll to bottom after resize to keep input visible
+    setTimeout(() => {
+      if (xtermRef.current) {
+        xtermRef.current.scrollToBottom();
+      }
+    }, 100);
   };
 
   const handleZoomOut = () => {
     const newSize = {
       cols: Math.max(40, terminalSize.cols - 10),
-      rows: Math.max(12, terminalSize.rows - 3)
+      rows: Math.max(15, terminalSize.rows - 5) // Increased min rows
     };
     setTerminalSize(newSize);
+    // Scroll to bottom after resize to keep input visible
+    setTimeout(() => {
+      if (xtermRef.current) {
+        xtermRef.current.scrollToBottom();
+      }
+    }, 100);
+  };
+
+  const handleVerticalStretch = () => {
+    const newSize = {
+      cols: terminalSize.cols,
+      rows: Math.min(50, terminalSize.rows + 10) // Just increase rows significantly
+    };
+    setTerminalSize(newSize);
+    // Scroll to bottom after resize to keep input visible
+    setTimeout(() => {
+      if (xtermRef.current) {
+        xtermRef.current.scrollToBottom();
+      }
+    }, 100);
   };
 
   return (
@@ -408,7 +436,7 @@ export const Terminal: React.FC<TerminalProps> = ({
         right: isFullscreen ? 0 : 'auto',
         bottom: isFullscreen ? 0 : 'auto',
         zIndex: isFullscreen ? 9999 : 'auto',
-        height: isFullscreen ? '100vh' : { xs: '400px', md: '500px' },
+        height: isFullscreen ? '100vh' : { xs: '500px', md: '600px', lg: '700px' }, // Increased heights
         width: isFullscreen ? '100vw' : '100%',
         bgcolor: '#0d1117',
         border: '1px solid #30363d',
@@ -476,6 +504,16 @@ export const Terminal: React.FC<TerminalProps> = ({
             </IconButton>
           </Tooltip>
 
+          <Tooltip title="Stretch Vertically">
+            <IconButton
+              size="small"
+              onClick={handleVerticalStretch}
+              sx={{ color: '#8b949e', '&:hover': { color: '#00d4aa' } }}
+            >
+              <Height fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
           <Tooltip title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
             <IconButton
               size="small"
@@ -493,15 +531,22 @@ export const Terminal: React.FC<TerminalProps> = ({
         ref={terminalRef}
         sx={{
           flex: 1,
+          position: 'relative',
+          overflow: 'hidden',
           '& .xterm': {
             height: '100% !important',
-            padding: '10px'
+            padding: '10px',
+            paddingBottom: '20px' // Extra padding at bottom to prevent text cutoff
           },
           '& .xterm-viewport': {
-            backgroundColor: 'transparent !important'
+            backgroundColor: 'transparent !important',
+            scrollBehavior: 'smooth'
           },
           '& .xterm-screen': {
             backgroundColor: 'transparent !important'
+          },
+          '& .xterm-scroll-area': {
+            marginBottom: '20px' // Ensure scroll area doesn't hide input
           }
         }}
       />

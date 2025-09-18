@@ -7,7 +7,8 @@ import {
   Typography,
   Chip,
   List,
-  ListItem
+  ListItem,
+  ListItemButton
 } from '@mui/material';
 import {
   Send,
@@ -138,64 +139,92 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
-      <Box sx={{
-        p: 2,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper'
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Circle
-              sx={{
-                fontSize: 12,
-                color: isConnected ? '#34C759' : '#FF3B30'
-              }}
-            />
-            <Typography variant="h6">
-              Axol Chat
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <img src="/axolotl.png" alt="Users" style={{ width: 16, height: 16 }} />
-              <Typography variant="body2" color="text.secondary">
-                {isConnected && privacySettings.showOnlineStatus ? `${onlineUsers.length} online` : 'Offline'}
+    <Box sx={{ display: 'flex', height: '100%', bgcolor: '#ffffff' }}>
+      {/* Main Chat Area */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <Box sx={{
+          p: 2,
+          borderBottom: '1px solid #e5e5ea',
+          bgcolor: '#f6f6f6',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Circle
+                sx={{
+                  fontSize: 12,
+                  color: isConnected ? '#34C759' : '#FF3B30'
+                }}
+              />
+              <Typography variant="h6" sx={{ color: '#000000', fontWeight: 600 }}>
+                Axol Chat
               </Typography>
             </Box>
-            <EncryptionStatus
-              state={encryptionState}
-              encryptedUserCount={encryptedUserCount}
-              totalUserCount={onlineUsers.length}
-              compact={true}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <img src="/axolotl.png" alt="Users" style={{ width: 16, height: 16 }} />
+                <Typography variant="body2" sx={{ color: '#8e8e93' }}>
+                  {isConnected && privacySettings.showOnlineStatus ? `${onlineUsers.length} online` : 'Offline'}
+                </Typography>
+              </Box>
+              <EncryptionStatus
+                state={encryptionState}
+                encryptedUserCount={encryptedUserCount}
+                totalUserCount={onlineUsers.length}
+                compact={true}
+              />
+            </Box>
           </Box>
         </Box>
-      </Box>
 
-      {/* Messages */}
-      <Box sx={{
-        flex: 1,
-        overflow: 'auto',
-        p: 1,
-        bgcolor: '#f2f2f7'
-      }}>
-        {!isConnected && (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography color="text.secondary" gutterBottom>
-              Not connected to chat
-            </Typography>
-            <Chip
-              label="Connect"
-              onClick={onConnect}
-              clickable
-              color="primary"
-              sx={{ mt: 1 }}
-            />
-          </Box>
-        )}
+        {/* Messages */}
+        <Box sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: 2,
+          bgcolor: '#ffffff',
+          backgroundImage: 'linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%)'
+        }}>
+          {!isConnected && (
+            <Box sx={{
+              textAlign: 'center',
+              py: 8,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2
+            }}>
+              <img src="/axolotl.png" alt="Axol" style={{ width: 64, height: 64, opacity: 0.5 }} />
+              <Typography sx={{ color: '#8e8e93', fontSize: '1.1rem' }}>
+                Not connected to chat
+              </Typography>
+              <Chip
+                label="Connect"
+                onClick={() => {
+                  messageService.connect()
+                    .then(() => {
+                      messageService.requestUserList();
+                      onConnect?.();
+                    })
+                    .catch((error) => {
+                      console.error('Failed to connect:', error);
+                    });
+                }}
+                clickable
+                sx={{
+                  bgcolor: '#007AFF',
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: '#0056b3'
+                  },
+                  px: 3,
+                  py: 1,
+                  fontSize: '1rem'
+                }}
+              />
+            </Box>
+          )}
 
         {isConnected && (
           <Box sx={{ p: 2 }}>
@@ -238,21 +267,21 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
                     </Typography>
                   )}
                   <Paper
-                    elevation={1}
+                    elevation={0}
                     sx={{
                       p: 1.5,
-                      borderRadius: 2.5,
+                      borderRadius: '18px',
                       bgcolor: message.isSelf ? (
                         message.status === 'sending' ? '#A0A0A0' :
-                        message.status === 'delivered' ? '#007AFF' :
                         '#007AFF'
-                      ) : 'white',
-                      color: message.isSelf ? 'white' : 'text.primary',
-                      borderBottomRightRadius: message.isSelf ? 0.5 : 2.5,
-                      borderBottomLeftRadius: message.isSelf ? 2.5 : 0.5,
+                      ) : '#e5e5ea',
+                      color: message.isSelf ? 'white' : '#000000',
+                      borderBottomRightRadius: message.isSelf ? '4px' : '18px',
+                      borderBottomLeftRadius: message.isSelf ? '18px' : '4px',
                       maxWidth: '100%',
                       wordBreak: 'break-word',
-                      opacity: message.status === 'sending' ? 0.7 : 1
+                      opacity: message.status === 'sending' ? 0.7 : 1,
+                      boxShadow: '0 1px 0 0 rgba(0,0,0,0.05)'
                     }}
                   >
                     <Typography variant="body2">
@@ -286,49 +315,118 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
         <div ref={messagesEndRef} />
       </Box>
 
-      {/* Input */}
-      <Box sx={{
-        p: 2,
-        borderTop: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper'
-      }}>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
-          <TextField
-            fullWidth
-            multiline
-            maxRows={4}
-            placeholder={isConnected ? "Type a message..." : "Connect to start chatting"}
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={!isConnected}
-            variant="outlined"
-            size="small"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 3,
-                bgcolor: 'background.default'
-              }
-            }}
-          />
-          <IconButton
-            onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || !isConnected}
-            sx={{
-              bgcolor: inputMessage.trim() && isConnected ? '#007AFF' : 'action.disabled',
-              color: 'white',
-              '&:hover': {
-                bgcolor: inputMessage.trim() && isConnected ? '#0056CC' : 'action.disabled',
-              },
-              '&.Mui-disabled': {
-                color: 'white'
-              }
-            }}
-          >
-            <Send />
-          </IconButton>
+        {/* Input */}
+        <Box sx={{
+          p: 2,
+          borderTop: '1px solid #e5e5ea',
+          bgcolor: '#f6f6f6'
+        }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+            <TextField
+              fullWidth
+              multiline
+              maxRows={4}
+              placeholder={isConnected ? "iMessage" : "Connect to start chatting"}
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={!isConnected}
+              variant="outlined"
+              size="small"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '20px',
+                  bgcolor: '#ffffff',
+                  border: '1px solid #d1d1d6',
+                  '&:hover': {
+                    borderColor: '#007AFF'
+                  },
+                  '&.Mui-focused': {
+                    borderColor: '#007AFF'
+                  },
+                  '& fieldset': {
+                    border: 'none'
+                  }
+                }
+              }}
+            />
+            <IconButton
+              onClick={handleSendMessage}
+              disabled={!inputMessage.trim() || !isConnected}
+              sx={{
+                bgcolor: inputMessage.trim() && isConnected ? '#007AFF' : '#c7c7cc',
+                color: 'white',
+                width: 32,
+                height: 32,
+                '&:hover': {
+                  bgcolor: inputMessage.trim() && isConnected ? '#0056b3' : '#c7c7cc',
+                },
+                '&.Mui-disabled': {
+                  color: 'white',
+                  bgcolor: '#c7c7cc'
+                }
+              }}
+            >
+              <Send sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
         </Box>
+      </Box>
+
+      {/* User List Sidebar */}
+      <Box sx={{
+        width: 260,
+        borderLeft: '1px solid #e5e5ea',
+        bgcolor: '#f6f6f6',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <Box sx={{
+          p: 2,
+          borderBottom: '1px solid #e5e5ea',
+          bgcolor: '#ffffff'
+        }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#000000' }}>
+            Online Users
+          </Typography>
+        </Box>
+
+        <List sx={{ flex: 1, overflow: 'auto', p: 0 }}>
+          {onlineUsers.length === 0 ? (
+            <ListItem>
+              <Typography sx={{ color: '#8e8e93', textAlign: 'center', width: '100%', py: 4 }}>
+                No users online
+              </Typography>
+            </ListItem>
+          ) : (
+            onlineUsers.map((user, index) => (
+              <ListItemButton
+                key={index}
+                sx={{
+                  borderBottom: '1px solid #e5e5ea',
+                  '&:hover': {
+                    bgcolor: '#e5e5ea'
+                  },
+                  py: 1.5,
+                  px: 2
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                  <img src="/axolotl.png" alt="User" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                  <Box sx={{ flex: 1 }}>
+                    <Typography sx={{ color: '#000000', fontWeight: 500 }}>
+                      {user}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#8e8e93' }}>
+                      Active now
+                    </Typography>
+                  </Box>
+                  <Circle sx={{ fontSize: 8, color: '#34C759' }} />
+                </Box>
+              </ListItemButton>
+            ))
+          )}
+        </List>
       </Box>
     </Box>
   );
