@@ -16,6 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import SecurityIcon from '@mui/icons-material/Security';
 import { TurnstileWidget } from '../components/TurnstileWidget';
+import { PasswordRecovery } from '../components/PasswordRecovery';
 import { apiService } from '../services/apiService';
 
 export const LoginPage: React.FC = () => {
@@ -28,6 +29,7 @@ export const LoginPage: React.FC = () => {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRecovery, setShowRecovery] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +64,13 @@ export const LoginPage: React.FC = () => {
   };
 
   const isFormValid = username.trim() && password.trim() && (!showCaptcha || turnstileToken);
+
+  const handleRecoveryComplete = () => {
+    setError(null);
+    setShowRecovery(false);
+    // Optionally show success message
+    alert('Password reset successful! You can now login with your new password.');
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -192,27 +201,55 @@ export const LoginPage: React.FC = () => {
 
             {/* Footer Links */}
             <Box sx={{ textAlign: 'center', mt: 2 }}>
-              <Link
-                href="/register"
-                variant="body2"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate('/register');
-                }}
-                sx={{
-                  textDecoration: 'none',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  }
-                }}
-              >
-                Don't have an account? Sign up
-              </Link>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Link
+                  component="button"
+                  variant="body2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowRecovery(true);
+                  }}
+                  sx={{
+                    textDecoration: 'none',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      textDecoration: 'underline',
+                    }
+                  }}
+                >
+                  Forgot your password?
+                </Link>
+                <Link
+                  href="/register"
+                  variant="body2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate('/register');
+                  }}
+                  sx={{
+                    textDecoration: 'none',
+                    '&:hover': {
+                      textDecoration: 'underline',
+                    }
+                  }}
+                >
+                  Don't have an account? Sign up
+                </Link>
+              </Box>
             </Box>
           </Box>
         </CardContent>
       </Card>
       </Container>
+
+      {/* Password Recovery Dialog */}
+      <PasswordRecovery
+        open={showRecovery}
+        onClose={() => setShowRecovery(false)}
+        onRecoveryComplete={handleRecoveryComplete}
+      />
     </Box>
   );
 };
