@@ -372,7 +372,9 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {String(JSON.stringify(event.data ?? {}))}
+                    <Typography variant="caption" component="div" sx={{ fontFamily: 'monospace' }}>
+                      {JSON.stringify(event.data)}
+                    </Typography>
                   </Box>
                 )}
               </Box>
