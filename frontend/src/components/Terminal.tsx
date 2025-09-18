@@ -73,7 +73,9 @@ export const Terminal: React.FC<TerminalProps> = ({
       macOptionIsMeta: true,
       scrollback: 10000, // Increased scrollback buffer
       tabStopWidth: 4,
-      convertEol: true
+      convertEol: true,
+      scrollOnUserInput: true,
+      fastScrollModifier: 'alt'
     });
 
     // Add addons
@@ -93,7 +95,7 @@ export const Terminal: React.FC<TerminalProps> = ({
     // Initial welcome message
     terminal.writeln('\x1b[32m╭─────────────────────────────────────────────────────────╮\x1b[0m');
     terminal.writeln('\x1b[32m│\x1b[0m                      \x1b[1;36mAxol Chat\x1b[0m                          \x1b[32m│\x1b[0m');
-    terminal.writeln('\x1b[32m│\x1b[0m              \x1b[33mAxol — private talk, under the shell.\x1b[0m        \x1b[32m│\x1b[0m');
+    terminal.writeln('\x1b[32m│\x1b[0m              \x1b[33mAxol — private talk, under the shell.\x1b[0m      \x1b[32m│\x1b[0m');
     terminal.writeln('\x1b[32m╰─────────────────────────────────────────────────────────╯\x1b[0m');
     terminal.writeln('');
 
@@ -404,6 +406,11 @@ export const Terminal: React.FC<TerminalProps> = ({
     // Set fixed terminal size and ensure proper scrolling
     terminal.resize(terminalSize.cols, terminalSize.rows);
 
+    // Initial scroll to bottom after setup, then let xterm handle natural scrolling
+    setTimeout(() => {
+      terminal.scrollToBottom();
+    }, 100);
+
     // Let xterm handle natural scrolling behavior like a real terminal
 
     return () => {
@@ -553,7 +560,6 @@ export const Terminal: React.FC<TerminalProps> = ({
         sx={{
           flex: 1,
           position: 'relative',
-          overflow: 'hidden',
           '& .xterm': {
             height: '100% !important',
             padding: '16px',
