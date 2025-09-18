@@ -29,9 +29,16 @@ interface DebugEvent {
   description: string;
 }
 
+interface WebSocketMessage {
+  type?: string;
+  data?: unknown;
+  timestamp?: number;
+  sender?: string;
+}
+
 interface WebSocketDebugPanelProps {
   websocketService: {
-    send: (message: unknown) => unknown;
+    send: (message: Partial<WebSocketMessage>) => void;
     on: (event: string, listener: (data: unknown) => void) => void;
     off: (event: string, listener: (data: unknown) => void) => void;
     requestUserList: () => void;
@@ -85,13 +92,12 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
 
     // Intercept WebSocket events
     const originalSend = websocketService.send.bind(websocketService);
-    websocketService.send = (message: unknown) => {
-      const messageObj = message as { type?: string; data?: unknown };
+    websocketService.send = (message: Partial<WebSocketMessage>) => {
       addEvent({
         type: 'sent',
-        category: messageObj.type || 'unknown',
+        category: message.type || 'unknown',
         data: message,
-        description: `Sent ${messageObj.type}: ${JSON.stringify(messageObj.data || {}).substring(0, 100)}...`
+        description: `Sent ${message.type}: ${JSON.stringify(message.data || {}).substring(0, 100)}...`
       });
       return originalSend(message);
     };
@@ -371,7 +377,7 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {JSON.stringify(event.data)}
+                    {JSON.stringify(event.data ?? {})}
                   </Box>
                 )}
               </Box>
