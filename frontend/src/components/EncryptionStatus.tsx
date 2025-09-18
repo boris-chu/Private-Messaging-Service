@@ -111,7 +111,7 @@ export const EncryptionStatus: React.FC<EncryptionStatusProps> = ({
 
       default:
         return {
-          icon: <LockOpen sx={{ fontSize: 16 }} />,
+          icon: <NoEncryptionOutlinedIcon sx={{ fontSize: 16 }} />,
           color: 'default' as const,
           text: 'Unknown',
           description: 'Encryption status unknown',

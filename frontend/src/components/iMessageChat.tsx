@@ -48,7 +48,8 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
   }, [messages]);
 
   useEffect(() => {
-    messageService.initialize({
+    (async () => {
+      await messageService.initialize({
       showReadReceipts: privacySettings.showReadReceipts,
       showOnlineStatus: privacySettings.showOnlineStatus,
       onMessageReceived: (message: Message) => {
@@ -98,6 +99,7 @@ export const iMessageChat: React.FC<iMessageChatProps> = ({
         setEncryptedUserCount(details?.encryptedUserCount || 0);
       }
     });
+    })();
 
     return () => {
       messageService.cleanup();

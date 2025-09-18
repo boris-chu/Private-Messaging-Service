@@ -279,7 +279,8 @@ export const Terminal: React.FC<TerminalProps> = ({
 
 
     // Initialize message service for terminal
-    messageService.initialize({
+    (async () => {
+      await messageService.initialize({
       showReadReceipts: privacySettings.showReadReceipts,
       showOnlineStatus: privacySettings.showOnlineStatus,
       onMessageReceived: (message: Message) => {
@@ -352,6 +353,7 @@ export const Terminal: React.FC<TerminalProps> = ({
         showPrompt();
       }
     });
+    })();
 
     // Set fixed terminal size instead of auto-fitting
     terminal.resize(terminalSize.cols, terminalSize.rows);
