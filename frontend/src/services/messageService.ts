@@ -56,7 +56,7 @@ export interface MessageServiceConfig {
   onUserJoined: (user: string) => void;
   onUserLeft: (user: string) => void;
   onUserListUpdate: (users: string[]) => void;
-  onConnectionStatusChange: (connected: boolean) => void;
+  onConnectionStatusChange: (status: 'connected' | 'disconnected' | 'connecting') => void;
   onEncryptionStateChange: (state: EncryptionState, details?: EncryptionDetails) => void;
 }
 
@@ -276,7 +276,16 @@ class MessageService {
 
   private handleConnectionStatus = (data: ConnectionStatusData) => {
     if (!this.config) return;
-    this.config.onConnectionStatusChange(data.status === 'connected' || data.connected === true);
+    // Map WebSocket status to our connection states
+    let status: 'connected' | 'disconnected' | 'connecting' = 'disconnected';
+    if (data.status === 'connected' || data.connected === true) {
+      status = 'connected';
+    } else if (data.status === 'connecting') {
+      status = 'connecting';
+    } else {
+      status = 'disconnected';
+    }
+    this.config.onConnectionStatusChange(status);
   };
 
   async sendMessage(content: string, recipient?: string): Promise<{ messageId: string; isEncrypted: boolean }> {

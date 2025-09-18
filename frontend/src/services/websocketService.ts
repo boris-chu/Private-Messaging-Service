@@ -26,7 +26,7 @@ interface User {
 class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 10; // Increased for mobile reliability
   private reconnectInterval = 1000;
   private listeners: Map<string, Array<(data: unknown) => void>> = new Map();
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
@@ -35,6 +35,48 @@ class WebSocketService {
 
   constructor() {
     this.authToken = localStorage.getItem('authToken');
+    this.setupMobileReconnectHandlers();
+  }
+
+  private setupMobileReconnectHandlers() {
+    // Handle page visibility changes (mobile apps going to background/foreground)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        // App came back to foreground, check connection
+        setTimeout(() => {
+          if (this.connectionStatus === 'disconnected' && !this.manualDisconnect) {
+            console.log('App returned from background, attempting reconnection...');
+            // Reset reconnect attempts for fresh start after background
+            this.reconnectAttempts = 0;
+            this.connect().catch(error => {
+              console.error('Background reconnect failed:', error);
+            });
+          }
+        }, 1000); // Small delay to allow network to stabilize
+      }
+    });
+
+    // Handle window focus (additional mobile browser support)
+    window.addEventListener('focus', () => {
+      if (this.connectionStatus === 'disconnected' && !this.manualDisconnect) {
+        setTimeout(() => {
+          console.log('Window focused, checking connection...');
+          this.connect().catch(error => {
+            console.error('Focus reconnect failed:', error);
+          });
+        }, 500);
+      }
+    });
+
+    // Handle online/offline events
+    window.addEventListener('online', () => {
+      if (this.connectionStatus === 'disconnected' && !this.manualDisconnect) {
+        console.log('Network came back online, reconnecting...');
+        this.connect().catch(error => {
+          console.error('Online reconnect failed:', error);
+        });
+      }
+    });
   }
 
   connect(): Promise<void> {

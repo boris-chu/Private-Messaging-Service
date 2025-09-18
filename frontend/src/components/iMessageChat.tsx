@@ -63,6 +63,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
   const [inputMessage, setInputMessage] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(connected);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
   const [encryptionState, setEncryptionState] = useState<EncryptionState>('no-encryption');
   const [encryptedUserCount, setEncryptedUserCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -155,8 +156,9 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
       onUserListUpdate: (users: string[]) => {
         setOnlineUsers(users);
       },
-      onConnectionStatusChange: (connected: boolean) => {
-        setIsConnected(connected);
+      onConnectionStatusChange: (status: 'connected' | 'disconnected' | 'connecting') => {
+        setConnectionStatus(status);
+        setIsConnected(status === 'connected');
       },
       onEncryptionStateChange: (state: EncryptionState, details?: EncryptionDetails) => {
         setEncryptionState(state);
@@ -268,31 +270,77 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           minHeight: '48px'
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 1, sm: 2 },
+          flex: 1,
+          minWidth: 0 // Allow flex children to shrink
+        }}>
           {/* Axol Chat Branding */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
             <img src="/axolotl.png" alt="Axol" style={{ width: 24, height: 24 }} />
-            <Typography variant="h6" sx={{ color: colors.brandColor, fontSize: '16px', fontWeight: 600 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                color: colors.brandColor,
+                fontSize: { xs: '14px', sm: '16px' },
+                fontWeight: 600,
+                display: { xs: 'none', sm: 'block' } // Hide text on mobile, keep icon
+              }}
+            >
               Axol Chat
             </Typography>
           </Box>
 
           {/* Connection Status */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Circle
-              sx={{
-                fontSize: 10,
-                color: isConnected ? '#34C759' : '#FF3B30'
-              }}
-            />
-            <Box sx={{ fontSize: '13px', color: colors.textSecondary, fontWeight: 500 }}>
-              {isConnected ? 'Connected' : 'Disconnected'}
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: { xs: 0.5, sm: 1.5 },
+            flexShrink: 0
+          }}>
+            {connectionStatus === 'connecting' ? (
+              <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  border: '2px solid #FFA500',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  '@keyframes spin': {
+                    '0%': { transform: 'rotate(0deg)' },
+                    '100%': { transform: 'rotate(360deg)' }
+                  }
+                }}
+              />
+            ) : (
+              <Circle
+                sx={{
+                  fontSize: 10,
+                  color: isConnected ? '#34C759' : '#FF3B30'
+                }}
+              />
+            )}
+            <Box sx={{
+              fontSize: { xs: '11px', sm: '13px' },
+              color: colors.textSecondary,
+              fontWeight: 500,
+              display: { xs: 'none', sm: 'block' } // Hide text on mobile, keep indicator
+            }}>
+              {connectionStatus === 'connected' ? 'Connected' :
+               connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
             </Box>
           </Box>
 
           {/* Online User Count */}
           {isConnected && onlineUserCount > 0 && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{
+              display: { xs: 'none', md: 'flex' }, // Hide on mobile and small tablets
+              alignItems: 'center',
+              gap: 0.5
+            }}>
               <Typography variant="body2" sx={{ color: colors.textSecondary, fontSize: '12px' }}>
                 {onlineUserCount} user{onlineUserCount !== 1 ? 's' : ''} online
               </Typography>
@@ -300,13 +348,22 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
           )}
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 0.25, sm: 0.5 },
+          flexShrink: 0
+        }}>
           {/* Theme Toggle */}
           <Tooltip title={`Switch to ${colorMode === 'light' ? 'dark' : 'light'} mode`}>
             <IconButton
               size="small"
               onClick={handleThemeToggle}
-              sx={{ color: colors.textSecondary, '&:hover': { color: colors.brandColor } }}
+              sx={{
+                color: colors.textSecondary,
+                '&:hover': { color: colors.brandColor },
+                p: { xs: 0.5, sm: 1 } // Smaller padding on mobile
+              }}
             >
               {colorMode === 'light' ? <DarkMode fontSize="small" /> : <LightMode fontSize="small" />}
             </IconButton>
@@ -314,15 +371,35 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
 
           {user && (
             <>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
-                <Typography variant="body2" sx={{ color: colors.textSecondary, fontSize: '12px' }}>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: { xs: 0.5, sm: 1 },
+                mr: { xs: 0, sm: 1 }
+              }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: colors.textSecondary,
+                    fontSize: { xs: '10px', sm: '12px' },
+                    display: { xs: 'none', sm: 'block' }, // Hide username on mobile
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: { sm: '100px', md: '150px' }
+                  }}
+                >
                   {user.fullName || user.username}
                 </Typography>
                 <Tooltip title="User Menu">
                   <IconButton
                     size="small"
                     onClick={handleMenu}
-                    sx={{ color: colors.textSecondary, '&:hover': { color: colors.brandColor } }}
+                    sx={{
+                      color: colors.textSecondary,
+                      '&:hover': { color: colors.brandColor },
+                      p: { xs: 0.5, sm: 1 }
+                    }}
                   >
                     <img src="/axolotl.png" alt="User Avatar" style={{ width: 20, height: 20, borderRadius: '50%' }} />
                   </IconButton>
