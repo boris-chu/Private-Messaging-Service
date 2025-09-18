@@ -20,6 +20,7 @@ import {
   Security,
   CheckCircle
 } from '@mui/icons-material';
+import { validateRecoveryPhrase, parseRecoveryPhrase } from '../utils/recoveryUtils';
 
 interface PasswordRecoveryProps {
   open: boolean;
@@ -54,9 +55,15 @@ export const PasswordRecovery: React.FC<PasswordRecoveryProps> = ({
 
   const validateRecoveryInput = (): boolean => {
     if (recoveryMethod === 'phrase') {
-      const words = recoveryInput.trim().split(/\s+/);
+      const words = parseRecoveryPhrase(recoveryInput);
       if (words.length !== 12) {
         setError('Recovery phrase must be exactly 12 words');
+        return false;
+      }
+
+      // Validate words are from our wordlist
+      if (!validateRecoveryPhrase(words)) {
+        setError('Invalid recovery phrase - contains unrecognized words');
         return false;
       }
 
@@ -64,7 +71,7 @@ export const PasswordRecovery: React.FC<PasswordRecoveryProps> = ({
       const storedPhrase = localStorage.getItem('recovery-phrase');
       if (storedPhrase) {
         const stored = JSON.parse(storedPhrase);
-        if (words.join(' ').toLowerCase() !== stored.join(' ').toLowerCase()) {
+        if (words.join(' ') !== stored.join(' ').toLowerCase()) {
           setError('Invalid recovery phrase');
           return false;
         }

@@ -42,6 +42,11 @@ import {
 } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import type { ChatTheme } from '../contexts/ThemeContext';
+import {
+  generateSecureRecoveryPhrase,
+  generateSecureRecoveryCodes,
+  createRecoveryBlob
+} from '../utils/recoveryUtils';
 
 interface User {
   username: string;
@@ -252,36 +257,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose, onD
     }
   };
 
+  // Use secure recovery generation from utils
   const generateRecoveryPhrase = (): string[] => {
-    // Simple word list for recovery phrase generation
-    const words = [
-      'abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract',
-      'absurd', 'abuse', 'access', 'accident', 'account', 'accuse', 'achieve', 'acid',
-      'acoustic', 'acquire', 'across', 'action', 'actor', 'actress', 'actual', 'adapt',
-      'add', 'addict', 'address', 'adjust', 'admit', 'adult', 'advance', 'advice',
-      'aerobic', 'affair', 'afford', 'afraid', 'again', 'agent', 'agree', 'ahead',
-      'aim', 'air', 'airport', 'aisle', 'alarm', 'album', 'alcohol', 'alert',
-      'alien', 'all', 'alley', 'allow', 'almost', 'alone', 'alpha', 'already',
-      'also', 'alter', 'always', 'amateur', 'amazing', 'among', 'amount', 'amused',
-      'analyst', 'anchor', 'ancient', 'anger', 'angle', 'angry', 'animal', 'ankle',
-      'announce', 'annual', 'another', 'answer', 'antenna', 'antique', 'anxiety', 'any',
-      'apart', 'apology', 'appear', 'apple', 'approve', 'april', 'arch', 'arctic'
-    ];
-
-    const phrase: string[] = [];
-    for (let i = 0; i < 12; i++) {
-      phrase.push(words[Math.floor(Math.random() * words.length)]);
-    }
-    return phrase;
+    return generateSecureRecoveryPhrase(12);
   };
 
   const generateRecoveryCodes = (): string[] => {
-    const codes: string[] = [];
-    for (let i = 0; i < 8; i++) {
-      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-      codes.push(code);
-    }
-    return codes;
+    return generateSecureRecoveryCodes(8, 8);
   };
 
   const generateRecoveryOptions = () => {
@@ -297,18 +279,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose, onD
   };
 
   const downloadRecoveryData = () => {
-    const data = {
-      username: user.username,
-      recoveryPhrase: recoveryPhrase.join(' '),
-      recoveryCodes,
-      generatedAt: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = createRecoveryBlob(user.username, recoveryPhrase, recoveryCodes);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `axol-recovery-${user.username}.json`;
+    a.download = `axol-recovery-${user.username}-${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
