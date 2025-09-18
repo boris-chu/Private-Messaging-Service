@@ -359,24 +359,22 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
                   {event.description}
                 </Typography>
 
-                {event.data && (
-                  <Box
-                    sx={{
-                      bgcolor: 'background.default',
-                      p: 0.5,
-                      borderRadius: 0.5,
-                      fontSize: '0.65rem',
-                      fontFamily: 'monospace',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    <Typography variant="caption" component="div" sx={{ fontFamily: 'monospace' }}>
-                      {JSON.stringify(event.data)}
-                    </Typography>
-                  </Box>
-                )}
+                <Box
+                  sx={{
+                    bgcolor: 'background.default',
+                    p: 0.5,
+                    borderRadius: 0.5,
+                    fontSize: '0.65rem',
+                    fontFamily: 'monospace',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <Typography variant="caption" component="div" sx={{ fontFamily: 'monospace' }}>
+                    {JSON.stringify(event.data ?? {})}
+                  </Typography>
+                </Box>
               </Box>
             ))
           )}
