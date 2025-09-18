@@ -77,14 +77,15 @@ export const RegisterPage: React.FC = () => {
     turnstileToken;
 
   return (
-    <Container maxWidth="sm" sx={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      px: { xs: 2, md: 3 },
-      py: { xs: 4, md: 4 }
-    }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Container maxWidth="sm" sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: { xs: 2, md: 3 },
+        py: { xs: 4, md: 4 }
+      }}>
       <Card sx={{
         width: '100%',
         maxWidth: { xs: '100%', md: 500 },
@@ -245,6 +246,7 @@ export const RegisterPage: React.FC = () => {
           </Box>
         </CardContent>
       </Card>
-    </Container>
+      </Container>
+    </Box>
   );
 };

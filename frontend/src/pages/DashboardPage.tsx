@@ -11,10 +11,9 @@ import {
   MenuItem,
   Avatar,
   Chip,
-  Grid,
   Card,
   CardContent,
-  Fade
+  Fade,
 } from '@mui/material';
 import {
   AccountCircle,
@@ -70,9 +69,9 @@ export const DashboardPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* App Bar */}
-      <AppBar position="static" sx={{ bgcolor: '#0d1117' }}>
+      <AppBar position="static" sx={{ bgcolor: 'background.paper' }}>
         <Toolbar>
           <Security sx={{ mr: 2, color: '#00d4aa' }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -137,7 +136,7 @@ export const DashboardPage: React.FC = () => {
               sx={{
                 p: 3,
                 mb: 4,
-                bgcolor: 'white',
+                bgcolor: 'background.paper',
                 borderRadius: 2
               }}
             >
@@ -155,103 +154,95 @@ export const DashboardPage: React.FC = () => {
             </Paper>
 
             {/* Stats Cards */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card elevation={2}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <People sx={{ fontSize: 40, color: '#219ebc' }} />
-                      <Box>
-                        <Typography variant="h6">Online Users</Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                          {connected ? '3' : '0'}
-                        </Typography>
-                      </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 3, mb: 4 }}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <People sx={{ fontSize: 40, color: '#219ebc' }} />
+                    <Box>
+                      <Typography variant="h6">Online Users</Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                        {connected ? '3' : '0'}
+                      </Typography>
                     </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
+                  </Box>
+                </CardContent>
+              </Card>
 
-              <Grid item xs={12} sm={6} md={3}>
-                <Card elevation={2}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Message sx={{ fontSize: 40, color: '#00d4aa' }} />
-                      <Box>
-                        <Typography variant="h6">Messages</Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                          12
-                        </Typography>
-                      </Box>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Message sx={{ fontSize: 40, color: '#00d4aa' }} />
+                    <Box>
+                      <Typography variant="h6">Messages</Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                        12
+                      </Typography>
                     </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
+                  </Box>
+                </CardContent>
+              </Card>
 
-              <Grid item xs={12} sm={6} md={3}>
-                <Card elevation={2}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Security sx={{ fontSize: 40, color: '#8b5cf6' }} />
-                      <Box>
-                        <Typography variant="h6">Encryption</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#00d4aa' }}>
-                          AES-256
-                        </Typography>
-                      </Box>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Security sx={{ fontSize: 40, color: '#8b5cf6' }} />
+                    <Box>
+                      <Typography variant="h6">Encryption</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#00d4aa' }}>
+                        AES-256
+                      </Typography>
                     </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
+                  </Box>
+                </CardContent>
+              </Card>
 
-              <Grid item xs={12} sm={6} md={3}>
-                <Card elevation={2}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        bgcolor: connected ? '#28ca42' : '#ff5f57',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
                       <Box
                         sx={{
-                          width: 40,
-                          height: 40,
+                          width: 20,
+                          height: 20,
                           borderRadius: '50%',
-                          bgcolor: connected ? '#28ca42' : '#ff5f57',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
+                          bgcolor: 'white'
+                        }}
+                      />
+                    </Box>
+                    <Box>
+                      <Typography variant="h6">Status</Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: connected ? '#28ca42' : '#ff5f57'
                         }}
                       >
-                        <Box
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            bgcolor: 'white'
-                          }}
-                        />
-                      </Box>
-                      <Box>
-                        <Typography variant="h6">Status</Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 600,
-                            color: connected ? '#28ca42' : '#ff5f57'
-                          }}
-                        >
-                          {connected ? 'Connected' : 'Offline'}
-                        </Typography>
-                      </Box>
+                        {connected ? 'Connected' : 'Offline'}
+                      </Typography>
                     </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
 
             {/* Terminal Section */}
             <Paper
               elevation={2}
               sx={{
                 p: 3,
-                bgcolor: 'white',
+                bgcolor: 'background.paper',
                 borderRadius: 2
               }}
             >

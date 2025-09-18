@@ -6,7 +6,6 @@ import { Box, Paper, IconButton, Tooltip } from '@mui/material';
 import {
   Fullscreen,
   FullscreenExit,
-  Settings,
   Refresh
 } from '@mui/icons-material';
 import '@xterm/xterm/css/xterm.css';
@@ -26,7 +25,6 @@ export const Terminal: React.FC<TerminalProps> = ({
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [currentLine, setCurrentLine] = useState('');
 
   useEffect(() => {
     if (!terminalRef.current) return;
