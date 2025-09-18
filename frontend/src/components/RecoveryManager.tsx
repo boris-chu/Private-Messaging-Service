@@ -5,7 +5,6 @@ import {
   Typography,
   Button,
   Alert,
-  Grid,
   Chip,
   IconButton,
   Tooltip
@@ -187,22 +186,29 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
             </Typography>
 
             {showPhrase ? (
-              <Grid container spacing={1}>
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: 'repeat(2, 1fr)',
+                  sm: 'repeat(3, 1fr)',
+                  md: 'repeat(4, 1fr)'
+                },
+                gap: 1
+              }}>
                 {recoveryPhrase.map((word, index) => (
-                  <Grid item xs={6} sm={4} md={3} key={index}>
-                    <Chip
-                      label={`${index + 1}. ${word}`}
-                      variant="outlined"
-                      sx={{
-                        width: '100%',
-                        justifyContent: 'flex-start',
-                        fontFamily: 'monospace',
-                        fontSize: '0.9rem'
-                      }}
-                    />
-                  </Grid>
+                  <Chip
+                    key={index}
+                    label={`${index + 1}. ${word}`}
+                    variant="outlined"
+                    sx={{
+                      width: '100%',
+                      justifyContent: 'flex-start',
+                      fontFamily: 'monospace',
+                      fontSize: '0.9rem'
+                    }}
+                  />
                 ))}
-              </Grid>
+              </Box>
             ) : (
               <Box sx={{ py: 3, textAlign: 'center', bgcolor: 'grey.100', borderRadius: 1 }}>
                 <Typography variant="body2" color="text.secondary">
@@ -231,37 +237,43 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
             </Typography>
 
             {showCodes ? (
-              <Grid container spacing={1}>
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: 'repeat(1, 1fr)',
+                  sm: 'repeat(2, 1fr)'
+                },
+                gap: 1
+              }}>
                 {recoveryCodes.map((code, index) => (
-                  <Grid item xs={12} sm={6} key={index}>
-                    <Paper
-                      variant="outlined"
+                  <Paper
+                    key={index}
+                    variant="outlined"
+                    sx={{
+                      p: 1.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      bgcolor: 'grey.50'
+                    }}
+                  >
+                    <Typography
                       sx={{
-                        p: 1.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        bgcolor: 'grey.50'
+                        fontFamily: 'monospace',
+                        fontSize: '0.95rem',
+                        fontWeight: 500
                       }}
                     >
-                      <Typography
-                        sx={{
-                          fontFamily: 'monospace',
-                          fontSize: '0.95rem',
-                          fontWeight: 500
-                        }}
-                      >
-                        {code}
-                      </Typography>
-                      <Tooltip title="Copy code">
-                        <IconButton onClick={() => handleCopyCode(code)} size="small">
-                          {copied[code] ? <CheckCircle color="success" fontSize="small" /> : <ContentCopy fontSize="small" />}
-                        </IconButton>
-                      </Tooltip>
-                    </Paper>
-                  </Grid>
+                      {code}
+                    </Typography>
+                    <Tooltip title="Copy code">
+                      <IconButton onClick={() => handleCopyCode(code)} size="small">
+                        {copied[code] ? <CheckCircle color="success" fontSize="small" /> : <ContentCopy fontSize="small" />}
+                      </IconButton>
+                    </Tooltip>
+                  </Paper>
                 ))}
-              </Grid>
+              </Box>
             ) : (
               <Box sx={{ py: 3, textAlign: 'center', bgcolor: 'grey.100', borderRadius: 1 }}>
                 <Typography variant="body2" color="text.secondary">
