@@ -1,7 +1,7 @@
 # Axol Chat Development Journey
 
-**Project Duration:** September 17, 2025 8:25 PM - September 18, 2025 12:35 PM
-**Total Time:** ~16 hours 10 minutes
+**Project Duration:** September 17, 2025 8:25 PM - September 18, 2025 1:45 PM (ongoing)
+**Total Time:** ~17 hours 20 minutes
 
 ## Overview
 Development of a secure, end-to-end encrypted messaging platform with a unique terminal-based interface, progressive web app capabilities, and comprehensive mobile support.
@@ -83,6 +83,21 @@ Development of a secure, end-to-end encrypted messaging platform with a unique t
 - Enhanced encryption process visibility
 - Connection stability diagnostics
 
+### Phase 6: Backend WebSocket Fixes & User Presence (Sept 18, 12:35 PM - 1:45 PM)
+**Duration:** ~1 hour 10 minutes | **Commits:** 69-72
+
+- **Safari Private Relay Issue:** Discovered and documented Safari compatibility issue
+- **WebSocket Mobile Fixes:** Resolved code 1006 connection dropping on mobile
+- **User Authentication:** Fixed username broadcasting for online presence
+- **Backend Error Handling:** Comprehensive error recovery and logging
+- **Message Protocol:** Full compatibility between frontend and backend
+
+**Key Achievements:**
+- Identified Safari Private Relay as connection blocker
+- Fixed mobile WebSocket stability issues
+- Resolved user online visibility problems
+- Enhanced backend error handling and diagnostics
+
 ## Technical Highlights
 
 ### Architecture
@@ -109,32 +124,42 @@ Development of a secure, end-to-end encrypted messaging platform with a unique t
 - Turnstile bot protection
 
 ### Development Stats
-- **Total Commits:** 68
+- **Total Commits:** 72
 - **Languages:** TypeScript (primary), CSS, HTML
-- **Major Libraries:** React, Material UI, xterm.js, Web Crypto API
-- **Lines of Code:** ~15,000+ (estimated)
+- **Major Libraries:** React, Material UI, xterm.js, Web Crypto API, Cloudflare Workers
+- **Lines of Code:** ~16,000+ (estimated)
 - **Key Files:** 50+ React components and services
+- **Backend:** Cloudflare Workers with Durable Objects
 
 ## Current Status
 - ✅ **Production Ready:** Deployed at axolchat.cc
 - ✅ **Full Feature Set:** Complete messaging with encryption
-- ✅ **Mobile Optimized:** Responsive design with debug tools
-- ✅ **Comprehensive Testing:** WebSocket stability diagnostics
-- 🔄 **Active Development:** Ongoing mobile WebSocket stability improvements
+- ✅ **Mobile Optimized:** Works on Chrome mobile (Safari Private Relay blocks WebSocket)
+- ✅ **User Presence:** Real-time online user tracking
+- ✅ **WebSocket Stability:** Fixed mobile connection issues
+- ✅ **Comprehensive Debugging:** Advanced diagnostic tools built-in
+
+## Known Issues & Workarounds
+- **Safari Private Relay:** Blocks WebSocket connections - use Chrome or disable Private Relay
+- **Mobile Safari:** Connection issues with Private Relay enabled
 
 ## Next Steps
-1. **Backend Optimization:** Investigate WebSocket connection dropping
-2. **Performance:** Optimize encryption process for mobile devices
-3. **Features:** Group chat functionality
-4. **Analytics:** Usage metrics and monitoring
+1. **Safari Compatibility:** Investigate Private Relay WebSocket workarounds
+2. **Features:** Group chat functionality and file sharing
+3. **Performance:** Optimize encryption for large messages
+4. **Analytics:** Usage metrics and monitoring dashboard
 5. **Documentation:** User guides and API documentation
 
 ## Lessons Learned
 - Terminal interfaces provide unique UX for technical users
 - Mobile WebSocket behavior requires specialized debugging
+- Safari Private Relay interferes with WebSocket connections
+- User presence requires explicit username transmission, not just tokens
+- Backend error handling is crucial for mobile connection stability
 - End-to-end encryption adds complexity but crucial for privacy
 - Progressive deployment enables rapid iteration
 - Comprehensive debugging tools essential for mobile development
+- Cloudflare Workers Durable Objects excellent for WebSocket state management
 
 ## Development Approach
 - **Iterative:** Rapid prototyping with continuous deployment
