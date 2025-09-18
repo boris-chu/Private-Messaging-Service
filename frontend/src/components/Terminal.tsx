@@ -242,7 +242,7 @@ export const Terminal: React.FC<TerminalProps> = ({
     function showPrompt() {
       const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
       const status = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
-      terminal.write(`${status} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
+      terminal.write(`${status} \x1b[36m${user.username}@axol\x1b[0m \x1b[34m~\x1b[0m $ `);
       // Ensure cursor stays visible
       setTimeout(() => terminal.scrollToBottom(), 10);
     }
@@ -553,7 +553,7 @@ export const Terminal: React.FC<TerminalProps> = ({
         // Show new prompt
         const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
         const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
-        terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
+        terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m \x1b[34m~\x1b[0m $ `);
       }
       // Reset the flag after processing
       terminalCommandChangeRef.current = false;
@@ -568,7 +568,7 @@ export const Terminal: React.FC<TerminalProps> = ({
       // Show new prompt
       const user = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
       const connectionStatus = connected ? '\x1b[32m●\x1b[0m' : '\x1b[31m●\x1b[0m';
-      terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m:\x1b[34m~\x1b[0m$ `);
+      terminal.write(`${connectionStatus} \x1b[36m${user.username}@axol\x1b[0m \x1b[34m~\x1b[0m $ `);
     }
 
     setPrevPrivacySettings(privacySettings);
