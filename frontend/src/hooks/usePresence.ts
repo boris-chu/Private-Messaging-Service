@@ -24,7 +24,7 @@ export function usePresence({
   displayName,
   isAnonymous = false,
   enabled = true,
-  interval = 10000 // 10 seconds
+  interval = 3000 // 3 seconds
 }: UsePresenceOptions): UsePresenceReturn {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [totalOnline, setTotalOnline] = useState(0);
