@@ -91,7 +91,7 @@ class WebSocketService {
       this.emit('connection_status', { status: 'connecting' });
 
       const wsUrl = import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev';
-      const fullUrl = `${wsUrl}/api/v1/ws`;
+      const fullUrl = `${wsUrl}/ws`;
 
       console.log(`🔗 Connecting to WebSocket: ${fullUrl}`);
 
