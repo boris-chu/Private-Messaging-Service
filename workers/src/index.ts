@@ -325,8 +325,8 @@ async function handleUserLogin(request: Request, env: Env): Promise<Response> {
 
       return sessionObject.fetch('http://session/login', {
         method: 'POST',
-        headers: request.headers,
-        body: request.body
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, turnstileToken })
       });
     }
 
