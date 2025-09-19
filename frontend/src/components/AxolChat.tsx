@@ -41,7 +41,7 @@ interface EncryptionDetails {
   error?: string;
 }
 
-interface iMessageChatProps {
+interface AxolChatProps {
   connected?: boolean;
   onConnect?: () => void;
   onSettings?: () => void;
@@ -49,7 +49,7 @@ interface iMessageChatProps {
   onlineUserCount?: number;
 }
 
-export const IMessageChat: React.FC<iMessageChatProps> = ({
+export const AxolChat: React.FC<AxolChatProps> = ({
   connected = false,
   onConnect,
   onSettings,
@@ -258,7 +258,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
         flexDirection: 'column'
       }}
     >
-      {/* iMessage Header */}
+      {/* Axol Chat Header */}
       <Box
         sx={{
           display: 'flex',
@@ -543,7 +543,7 @@ export const IMessageChat: React.FC<iMessageChatProps> = ({
               fullWidth
               multiline
               maxRows={4}
-              placeholder={isConnected ? "iMessage" : "Connect to start chatting"}
+              placeholder={isConnected ? "Message" : "Connect to start chatting"}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}

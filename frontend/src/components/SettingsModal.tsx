@@ -443,7 +443,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose, onD
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Chat sx={{ color: '#007AFF' }} />
                     <Box>
-                      <Typography variant="body1">iMessage Style</Typography>
+                      <Typography variant="body1">Modern Style</Typography>
                       <Typography variant="body2" color="text.secondary">
                         Familiar chat interface for everyone
                       </Typography>

@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Terminal } from '../components/Terminal';
-import { IMessageChat } from '../components/iMessageChat';
+import { AxolChat } from '../components/AxolChat';
 import { SettingsModal } from '../components/SettingsModal';
 import { WebSocketDebugPanel } from '../components/WebSocketDebugPanel';
 import { useTheme } from '../contexts/ThemeContext';
@@ -214,7 +214,7 @@ export const DashboardPage: React.FC = () => {
               presenceUsers={presenceUsers}
             />
           ) : (
-            <IMessageChat
+            <AxolChat
               connected={connected}
               onConnect={handleConnect}
               onSettings={handleSettings}
