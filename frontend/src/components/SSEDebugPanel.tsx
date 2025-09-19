@@ -32,13 +32,15 @@ interface DebugEvent {
 }
 
 interface SSEDebugPanelProps {
-  sseService: {
+  messageService: {
     sendMessage: (content: string, recipient?: string) => Promise<{ messageId: string; isEncrypted: boolean }>;
     sendLobbyMessage: (content: string) => Promise<{ messageId: string; isEncrypted: boolean }>;
     requestUserList: () => Promise<void>;
+    isConnected: boolean;
+  };
+  sseService: {
     on: (event: string, listener: (data: unknown) => void) => void;
     off: (event: string, listener: (data: unknown) => void) => void;
-    isConnected: boolean;
     status: string;
   };
   enabled: boolean;
@@ -46,6 +48,7 @@ interface SSEDebugPanelProps {
 }
 
 export const SSEDebugPanel: React.FC<SSEDebugPanelProps> = ({
+  messageService,
   sseService,
   enabled,
   onToggle
@@ -88,11 +91,11 @@ export const SSEDebugPanel: React.FC<SSEDebugPanelProps> = ({
   }, [enabled]);
 
   useEffect(() => {
-    if (!enabled || !sseService) return;
+    if (!enabled || !messageService || !sseService) return;
 
-    // Intercept SSE service HTTP requests
-    const originalSendMessage = sseService.sendMessage.bind(sseService);
-    sseService.sendMessage = async (content: string, recipient?: string) => {
+    // Intercept messageService HTTP requests
+    const originalSendMessage = messageService.sendMessage.bind(messageService);
+    messageService.sendMessage = async (content: string, recipient?: string) => {
       addEvent({
         type: 'http',
         category: recipient ? 'direct_message' : 'message',
@@ -109,8 +112,8 @@ export const SSEDebugPanel: React.FC<SSEDebugPanelProps> = ({
       return result;
     };
 
-    const originalSendLobbyMessage = sseService.sendLobbyMessage.bind(sseService);
-    sseService.sendLobbyMessage = async (content: string) => {
+    const originalSendLobbyMessage = messageService.sendLobbyMessage.bind(messageService);
+    messageService.sendLobbyMessage = async (content: string) => {
       addEvent({
         type: 'http',
         category: 'lobby_message',
@@ -127,8 +130,8 @@ export const SSEDebugPanel: React.FC<SSEDebugPanelProps> = ({
       return result;
     };
 
-    const originalRequestUserList = sseService.requestUserList.bind(sseService);
-    sseService.requestUserList = async () => {
+    const originalRequestUserList = messageService.requestUserList.bind(messageService);
+    messageService.requestUserList = async () => {
       addEvent({
         type: 'http',
         category: 'user_list_request',
@@ -243,18 +246,18 @@ export const SSEDebugPanel: React.FC<SSEDebugPanelProps> = ({
     addEvent({
       type: 'system',
       category: 'debug',
-      data: { enabled: true, status: sseService.status, connected: sseService.isConnected },
-      description: `SSE debugging enabled. Status: ${sseService.status}, Connected: ${sseService.isConnected}`
+      data: { enabled: true, status: sseService.status, connected: messageService.isConnected },
+      description: `SSE debugging enabled. Status: ${sseService.status}, Connected: ${messageService.isConnected}`
     });
 
     return () => {
       listeners.forEach(cleanup => cleanup());
       // Restore original methods
-      sseService.sendMessage = originalSendMessage;
-      sseService.sendLobbyMessage = originalSendLobbyMessage;
-      sseService.requestUserList = originalRequestUserList;
+      messageService.sendMessage = originalSendMessage;
+      messageService.sendLobbyMessage = originalSendLobbyMessage;
+      messageService.requestUserList = originalRequestUserList;
     };
-  }, [enabled, sseService, addEvent]);
+  }, [enabled, messageService, sseService, addEvent]);
 
   const clearEvents = () => {
     setEvents([]);
@@ -286,8 +289,8 @@ export const SSEDebugPanel: React.FC<SSEDebugPanelProps> = ({
   };
 
   const testConnection = () => {
-    if (sseService) {
-      sseService.requestUserList();
+    if (messageService) {
+      messageService.requestUserList();
       addEvent({
         type: 'system',
         category: 'test',
@@ -408,9 +411,9 @@ export const SSEDebugPanel: React.FC<SSEDebugPanelProps> = ({
   };
 
   const sendTestMessage = async () => {
-    if (sseService) {
+    if (messageService) {
       try {
-        await sseService.sendLobbyMessage('🧪 Test message from debug panel');
+        await messageService.sendLobbyMessage('🧪 Test message from debug panel');
         addEvent({
           type: 'system',
           category: 'test',
@@ -477,9 +480,9 @@ export const SSEDebugPanel: React.FC<SSEDebugPanelProps> = ({
           <Typography variant="subtitle2">SSE + HTTP Debug</Typography>
           <Badge badgeContent={events.length} color="secondary" max={99} />
           <Chip
-            label={sseService?.isConnected ? 'Connected' : 'Disconnected'}
+            label={messageService?.isConnected ? 'Connected' : 'Disconnected'}
             size="small"
-            color={sseService?.isConnected ? 'success' : 'error'}
+            color={messageService?.isConnected ? 'success' : 'error'}
             sx={{ height: 16, fontSize: '0.65rem' }}
           />
         </Box>

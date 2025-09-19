@@ -86,7 +86,7 @@ export const DashboardPage: React.FC = () => {
       // Small delay to ensure components are ready
       setTimeout(() => {
         console.log('Auto-reconnecting to chat...');
-        setConnected(websocketService.isConnected);
+        setConnected(messageService.isConnected);
       }, 1000);
     }
   }, [navigate]);
@@ -106,7 +106,7 @@ export const DashboardPage: React.FC = () => {
     }
 
     // Disconnect from websocket before logout
-    websocketService.disconnect();
+    messageService.disconnect();
 
     // Handle anonymous session cleanup
     if (user?.isAnonymous && anonymousSessionManager.isSessionActive()) {
@@ -128,7 +128,7 @@ export const DashboardPage: React.FC = () => {
 
   const handleDeleteAccount = () => {
     // Disconnect from websocket
-    websocketService.disconnect();
+    messageService.disconnect();
     // Clear all user data
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
@@ -144,7 +144,7 @@ export const DashboardPage: React.FC = () => {
 
   const handleConnect = useCallback(() => {
     console.log('Connecting to WebSocket...');
-    setConnected(websocketService.isConnected);
+    setConnected(messageService.isConnected);
     // Save connection state for auto-reconnect
     localStorage.setItem('axol-was-connected', 'true');
   }, []);
@@ -169,11 +169,11 @@ export const DashboardPage: React.FC = () => {
     };
 
     const handleUserJoined = () => {
-      websocketService.requestUserList();
+      messageService.requestUserList();
     };
 
     const handleUserLeft = () => {
-      websocketService.requestUserList();
+      messageService.requestUserList();
     };
 
     const connectionStatusWrapper = (data: unknown) => handleConnectionStatus(data as ConnectionStatusData);
@@ -181,19 +181,19 @@ export const DashboardPage: React.FC = () => {
     const userJoinedWrapper = () => handleUserJoined();
     const userLeftWrapper = () => handleUserLeft();
 
-    websocketService.on('connection_status', connectionStatusWrapper);
-    websocketService.on('user_list', userListWrapper);
-    websocketService.on('user_joined', userJoinedWrapper);
-    websocketService.on('user_left', userLeftWrapper);
+    messageService.on('connection_status', connectionStatusWrapper);
+    messageService.on('user_list', userListWrapper);
+    messageService.on('user_joined', userJoinedWrapper);
+    messageService.on('user_left', userLeftWrapper);
 
     // Set initial connection state
-    setConnected(websocketService.isConnected);
+    setConnected(messageService.isConnected);
 
     return () => {
-      websocketService.off('connection_status', connectionStatusWrapper);
-      websocketService.off('user_list', userListWrapper);
-      websocketService.off('user_joined', userJoinedWrapper);
-      websocketService.off('user_left', userLeftWrapper);
+      messageService.off('connection_status', connectionStatusWrapper);
+      messageService.off('user_list', userListWrapper);
+      messageService.off('user_joined', userJoinedWrapper);
+      messageService.off('user_left', userLeftWrapper);
     };
   }, []);
 
@@ -236,6 +236,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* SSE + HTTP Debug Panel */}
       <SSEDebugPanel
+        messageService={messageService}
         sseService={sseService}
         enabled={debugSettings.websocketDebugEnabled}
         onToggle={() => {}}
