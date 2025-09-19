@@ -7,7 +7,8 @@ import {
   Alert,
   Chip,
   IconButton,
-  Tooltip
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
 import {
   Security,
@@ -225,7 +226,7 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
                 ))}
               </Box>
             ) : (
-              <Box sx={{ py: 3, textAlign: 'center', bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Box sx={{ py: 3, textAlign: 'center', bgcolor: 'background.default', borderRadius: 1 }}>
                 <Typography variant="body2" color="text.secondary">
                   Click the eye icon to reveal your recovery phrase
                 </Typography>
@@ -269,7 +270,7 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      bgcolor: 'grey.50'
+                      bgcolor: 'background.default'
                     }}
                   >
                     <Typography
@@ -290,7 +291,7 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
                 ))}
               </Box>
             ) : (
-              <Box sx={{ py: 3, textAlign: 'center', bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Box sx={{ py: 3, textAlign: 'center', bgcolor: 'background.default', borderRadius: 1 }}>
                 <Typography variant="body2" color="text.secondary">
                   Click the eye icon to reveal your recovery codes
                 </Typography>
@@ -332,5 +333,3 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
   );
 };
 
-// Import the missing CircularProgress
-import { CircularProgress } from '@mui/material';
