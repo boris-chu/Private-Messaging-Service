@@ -9,13 +9,12 @@ enabled = true
 [durable_objects]
 bindings = [
   { name = "SESSIONS", class_name = "SessionManager", script_name = "secure-messaging" },
-  { name = "CONNECTIONS", class_name = "ConnectionManager", script_name = "secure-messaging" },
-  { name = "PRESENCE", class_name = "PresenceService", script_name = "secure-messaging" }
+  { name = "CONNECTIONS", class_name = "ConnectionManager", script_name = "secure-messaging" }
 ]
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["SessionManager", "ConnectionManager", "PresenceService"]
+new_sqlite_classes = ["SessionManager", "ConnectionManager"]
 
 # Custom domain routes
 [[routes]]
