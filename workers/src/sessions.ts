@@ -51,7 +51,7 @@ export class SessionManager {
           error: 'Username and password are required'
         }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -60,7 +60,7 @@ export class SessionManager {
           error: 'User already exists'
         }), {
           status: 409,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -82,14 +82,14 @@ export class SessionManager {
         success: true,
         message: 'User registered successfully'
       }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
     } catch (error) {
       return new Response(JSON.stringify({
         error: 'Registration failed'
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
   }
@@ -103,7 +103,7 @@ export class SessionManager {
         error: 'User not found'
       }), {
         status: 404,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
@@ -117,7 +117,7 @@ export class SessionManager {
     };
 
     return new Response(JSON.stringify(publicUser), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
 
@@ -130,7 +130,7 @@ export class SessionManager {
     }));
 
     return new Response(JSON.stringify(publicUsers), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
 
@@ -171,7 +171,7 @@ export class SessionManager {
           error: 'Username, displayName, and sessionId are required'
         }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -180,7 +180,7 @@ export class SessionManager {
           error: 'Username already exists'
         }), {
           status: 409,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -211,14 +211,14 @@ export class SessionManager {
           sessionId: userData.sessionId
         }
       }), {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     } catch (error) {
       return new Response(JSON.stringify({
         error: 'Anonymous registration failed'
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
   }
@@ -234,7 +234,7 @@ export class SessionManager {
 
   private async handleHeartbeat(request: Request): Promise<Response> {
     if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
+      return new Response('Method not allowed', { status: 405, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 
     try {
@@ -246,7 +246,7 @@ export class SessionManager {
           error: 'Username required'
         }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -256,7 +256,7 @@ export class SessionManager {
           error: 'User not found'
         }), {
           status: 404,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -270,21 +270,21 @@ export class SessionManager {
         message: 'Heartbeat recorded',
         lastSeen: user.lastSeen
       }), {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     } catch (error) {
       return new Response(JSON.stringify({
         error: 'Heartbeat processing failed'
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
   }
 
   private async saveRecoveryData(request: Request): Promise<Response> {
     if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
+      return new Response('Method not allowed', { status: 405, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 
     try {
@@ -300,7 +300,7 @@ export class SessionManager {
           error: 'Username required'
         }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -310,7 +310,7 @@ export class SessionManager {
           error: 'User not found'
         }), {
           status: 404,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -324,21 +324,21 @@ export class SessionManager {
         success: true,
         message: 'Recovery data saved successfully'
       }), {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     } catch (error) {
       return new Response(JSON.stringify({
         error: 'Failed to save recovery data'
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
   }
 
   private async verifyRecoveryPhrase(request: Request): Promise<Response> {
     if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
+      return new Response('Method not allowed', { status: 405, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 
     try {
@@ -353,7 +353,7 @@ export class SessionManager {
           error: 'Username and recovery phrase required'
         }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -363,7 +363,7 @@ export class SessionManager {
           error: 'User not found'
         }), {
           status: 404,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -377,14 +377,14 @@ export class SessionManager {
           success: true,
           message: 'Recovery phrase verified'
         }), {
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       } else {
         return new Response(JSON.stringify({
           error: 'Invalid recovery phrase'
         }), {
           status: 401,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
     } catch (error) {
@@ -392,14 +392,14 @@ export class SessionManager {
         error: 'Failed to verify recovery phrase'
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
   }
 
   private async verifyRecoveryCode(request: Request): Promise<Response> {
     if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
+      return new Response('Method not allowed', { status: 405, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 
     try {
@@ -414,7 +414,7 @@ export class SessionManager {
           error: 'Username and recovery code required'
         }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -424,7 +424,7 @@ export class SessionManager {
           error: 'User not found'
         }), {
           status: 404,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -434,7 +434,7 @@ export class SessionManager {
           error: 'Recovery code has already been used'
         }), {
           status: 401,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
 
@@ -451,14 +451,14 @@ export class SessionManager {
           success: true,
           message: 'Recovery code verified'
         }), {
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       } else {
         return new Response(JSON.stringify({
           error: 'Invalid recovery code'
         }), {
           status: 401,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
     } catch (error) {
@@ -466,7 +466,7 @@ export class SessionManager {
         error: 'Failed to verify recovery code'
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
   }
@@ -480,7 +480,7 @@ export class SessionManager {
         error: 'Username required'
       }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
@@ -490,7 +490,7 @@ export class SessionManager {
         error: 'User not found'
       }), {
         status: 404,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
@@ -501,7 +501,7 @@ export class SessionManager {
       remainingCodes: user.recoveryCodes ?
         user.recoveryCodes.length - (user.usedRecoveryCodes?.length || 0) : 0
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   }
 }
