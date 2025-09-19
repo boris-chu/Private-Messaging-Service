@@ -27,7 +27,9 @@ export default {
     }
 
     // Handle WebSocket upgrade for messaging
+    console.log(`🟢 MAIN: Checking WebSocket upgrade. Upgrade header: "${request.headers.get('Upgrade')}", URL: ${request.url}`);
     if (request.headers.get('Upgrade') === 'websocket') {
+      console.log(`🟢 MAIN: WebSocket upgrade detected! Calling handleWebSocket`);
       return handleWebSocket(request, env);
     }
 
