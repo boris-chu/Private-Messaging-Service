@@ -195,7 +195,7 @@ export const Terminal: React.FC<TerminalProps> = ({
     let messageRecipient = '';
 
     // Command history (keep last 10 commands)
-    let commandHistory: string[] = [];
+    const commandHistory: string[] = [];
     let historyIndex = -1;
 
     terminal.onData((data) => {
@@ -620,7 +620,7 @@ export const Terminal: React.FC<TerminalProps> = ({
                 terminal.writeln(`\x1b[33m[LOBBY]\x1b[0m Broadcasting: \x1b[36m${message}\x1b[0m`);
 
                 // Send lobby message using dedicated method
-                messageService.sendLobbyMessage(message).then(({ messageId, isEncrypted }) => {
+                messageService.sendLobbyMessage(message).then(({ isEncrypted }) => {
                   const encStatus = isEncrypted ? '\x1b[32m[🔒]\x1b[0m' : '\x1b[90m[📢]\x1b[0m';
                   terminal.writeln(`\x1b[90m[SENT]\x1b[0m ${encStatus} Message broadcast to lobby`);
                   showPrompt();
