@@ -183,7 +183,9 @@ class APIService {
 
   async heartbeatSession(sessionData: {
     username: string;
-    sessionId: string;
+    sessionId?: string;
+    displayName?: string;
+    isAnonymous?: boolean;
   }) {
     const response = await this.makeRequest('/users/heartbeat', {
       method: 'POST',
@@ -193,6 +195,17 @@ class APIService {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Session heartbeat failed');
+    }
+
+    return response.json();
+  }
+
+  async getOnlineUsers() {
+    const response = await this.makeRequest('/presence');
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch online users');
     }
 
     return response.json();
@@ -358,4 +371,26 @@ export interface AnonymousLoginResponse {
     isAnonymous: boolean;
     sessionId: string;
   };
+}
+
+export interface OnlineUser {
+  username: string;
+  displayName: string;
+  isAnonymous: boolean;
+  lastSeen: number;
+  status: 'online' | 'away';
+}
+
+export interface HeartbeatResponse {
+  success: boolean;
+  heartbeatReceived: number;
+  onlineUsers: OnlineUser[];
+  totalOnline: number;
+}
+
+export interface PresenceResponse {
+  success: boolean;
+  users: OnlineUser[];
+  total: number;
+  timestamp: number;
 }
