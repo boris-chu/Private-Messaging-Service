@@ -14,6 +14,7 @@ import type { Message, MessageStatus } from '../services/messageService';
 import { useTheme } from '../contexts/ThemeContext';
 import type { EncryptionState } from '../components/EncryptionStatus';
 import { useTerminalMessages } from '../hooks/useChatStorage';
+import type { OnlineUser } from '../services/apiService';
 
 interface User {
   username: string;
@@ -38,6 +39,7 @@ interface TerminalProps {
   onSettings?: () => void;
   onLogout?: () => void;
   onlineUserCount?: number;
+  presenceUsers?: OnlineUser[];
 }
 
 export const Terminal: React.FC<TerminalProps> = ({
@@ -46,7 +48,8 @@ export const Terminal: React.FC<TerminalProps> = ({
   connected = false,
   onSettings,
   onLogout,
-  onlineUserCount = 0
+  onlineUserCount = 0,
+  presenceUsers = []
 }) => {
   const { privacySettings, updatePrivacySettings } = useTheme();
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -487,22 +490,20 @@ export const Terminal: React.FC<TerminalProps> = ({
         }
 
         case 'users':
-          if (messageService.isConnected) {
-            if (privacySettings.showOnlineStatus) {
-              terminal.writeln('\x1b[33mOnline Users:\x1b[0m');
-              if (onlineUsers.length > 0) {
-                onlineUsers.forEach(user => {
-                  terminal.writeln(`  \x1b[36m${user}\x1b[0m - Online`);
-                });
-              } else {
-                terminal.writeln('  \x1b[90mNo other users online\x1b[0m');
-              }
+          if (privacySettings.showOnlineStatus) {
+            terminal.writeln('\x1b[33mOnline Users:\x1b[0m');
+            if (presenceUsers.length > 0) {
+              presenceUsers.forEach(user => {
+                const statusColor = user.status === 'online' ? '\x1b[32m' : '\x1b[33m';
+                const anonTag = user.isAnonymous ? ' \x1b[90m[Guest]\x1b[0m' : '';
+                terminal.writeln(`  \x1b[36m${user.displayName}\x1b[0m ${statusColor}${user.status}\x1b[0m${anonTag}`);
+              });
+              terminal.writeln(`\x1b[90mTotal: ${presenceUsers.length} user${presenceUsers.length !== 1 ? 's' : ''} online\x1b[0m`);
             } else {
-              terminal.writeln('\x1b[90mOnline status visibility disabled\x1b[0m');
+              terminal.writeln('  \x1b[90mNo other users online\x1b[0m');
             }
-            messageService.requestUserList();
           } else {
-            terminal.writeln('\x1b[31mNot connected to server\x1b[0m');
+            terminal.writeln('\x1b[90mOnline status visibility disabled\x1b[0m');
           }
           break;
 

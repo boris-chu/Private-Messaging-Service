@@ -12,6 +12,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { websocketService } from '../services/websocketService';
 import { anonymousSessionManager } from '../utils/anonymousSessionManager';
 import { apiService } from '../services/apiService';
+import { usePresence } from '../hooks/usePresence';
 
 interface User {
   username: string;
@@ -25,16 +26,25 @@ interface ConnectionStatusData {
   status: string;
 }
 
-interface UserListData {
-  users?: string[];
-}
+// UserListData interface removed - using HTTP presence data instead
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { chatTheme, debugSettings } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [connected, setConnected] = useState(false);
-  const [onlineUserCount, setOnlineUserCount] = useState(0);
+  // Removed onlineUserCount - now using presenceTotalOnline from usePresence hook
+
+  // Use HTTP presence polling for accurate user tracking
+  const {
+    onlineUsers: presenceUsers,
+    totalOnline: presenceTotalOnline
+  } = usePresence({
+    username: user?.username || '',
+    displayName: user?.displayName || user?.fullName || '',
+    isAnonymous: user?.isAnonymous || false,
+    enabled: !!user?.username
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -152,8 +162,8 @@ export const DashboardPage: React.FC = () => {
       }
     };
 
-    const handleUserList = (data: UserListData) => {
-      setOnlineUserCount(data.users ? data.users.length : 0);
+    const handleUserList = () => {
+      // User count now handled by usePresence hook - WebSocket user list not used for count
     };
 
     const handleUserJoined = () => {
@@ -165,7 +175,7 @@ export const DashboardPage: React.FC = () => {
     };
 
     const connectionStatusWrapper = (data: unknown) => handleConnectionStatus(data as ConnectionStatusData);
-    const userListWrapper = (data: unknown) => handleUserList(data as UserListData);
+    const userListWrapper = () => handleUserList();
     const userJoinedWrapper = () => handleUserJoined();
     const userLeftWrapper = () => handleUserLeft();
 
@@ -200,7 +210,8 @@ export const DashboardPage: React.FC = () => {
               onCommand={handleCommand}
               onSettings={handleSettings}
               onLogout={handleLogout}
-              onlineUserCount={onlineUserCount}
+              onlineUserCount={presenceTotalOnline}
+              presenceUsers={presenceUsers}
             />
           ) : (
             <IMessageChat
@@ -208,7 +219,8 @@ export const DashboardPage: React.FC = () => {
               onConnect={handleConnect}
               onSettings={handleSettings}
               onLogout={handleLogout}
-              onlineUserCount={onlineUserCount}
+              onlineUserCount={presenceTotalOnline}
+              presenceUsers={presenceUsers}
             />
           )}
         </Box>
