@@ -11,6 +11,7 @@ import { WebSocketDebugPanel } from '../components/WebSocketDebugPanel';
 import { useTheme } from '../contexts/ThemeContext';
 import { websocketService } from '../services/websocketService';
 import { anonymousSessionManager } from '../utils/anonymousSessionManager';
+import { apiService } from '../services/apiService';
 
 interface User {
   username: string;
@@ -83,6 +84,15 @@ export const DashboardPage: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    // Immediately remove user from presence tracking
+    if (user?.username) {
+      try {
+        await apiService.logoutPresence(user.username);
+      } catch {
+        // Silent fail for presence cleanup
+      }
+    }
+
     // Disconnect from websocket before logout
     websocketService.disconnect();
 

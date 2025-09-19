@@ -211,6 +211,20 @@ class APIService {
     return response.json();
   }
 
+  async logoutPresence(username: string) {
+    const response = await this.makeRequest('/presence/logout', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to logout from presence');
+    }
+
+    return response.json();
+  }
+
   async getAllUsers() {
     const response = await this.makeRequest('/users');
 

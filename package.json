@@ -10,5 +10,8 @@
   "workspaces": [
     "frontend",
     "workers"
-  ]
+  ],
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
 }

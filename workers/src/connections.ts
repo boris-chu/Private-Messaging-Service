@@ -7,10 +7,24 @@ export class ConnectionManager {
   private userConnections: Map<string, string> = new Map(); // username -> connectionId
   private connectionUsers: Map<string, string> = new Map(); // connectionId -> username
   private presenceManager: PresenceManager | null = null;
+  private webSocketConnectionIds: Map<WebSocket, string> = new Map(); // WebSocket -> connectionId
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
     this.env = env;
+
+    // Restore hibernating WebSockets on restart
+    this.state.getWebSockets().forEach((ws) => {
+      const attachment = ws.deserializeAttachment();
+      if (attachment && attachment.connectionId) {
+        this.webSocketConnectionIds.set(ws, attachment.connectionId);
+        this.connections.set(attachment.connectionId, ws);
+        if (attachment.username) {
+          this.userConnections.set(attachment.username, attachment.connectionId);
+          this.connectionUsers.set(attachment.connectionId, attachment.username);
+        }
+      }
+    });
   }
 
   private getPresenceManager(): PresenceManager {
@@ -66,55 +80,24 @@ export class ConnectionManager {
     console.log(`New WebSocket connection: ${connectionId} - IP: ${clientIP}, Mobile: ${isMobile}`);
 
     try {
-      // Store connection with metadata (using server WebSocket)
+      // CRITICAL: Set attachment BEFORE accepting WebSocket for hibernation
+      server.serializeAttachment({
+        connectionId,
+        isMobile,
+        clientIP,
+        connectedAt: Date.now()
+      });
+
+      // Store connection mapping BEFORE hibernation
+      this.webSocketConnectionIds.set(server, connectionId);
       this.connections.set(connectionId, server);
 
-      // Set up event listeners with mobile-specific handling
-      server.addEventListener('message', (event: MessageEvent) => {
-        this.handleMessage(connectionId, event.data).catch(error => {
-          console.error(`Error handling message from ${connectionId}:`, error);
-        });
-      });
+      // Use Cloudflare Workers hibernation API - must be LAST step
+      console.log(`🟡 HIBERNATION: Accepting WebSocket ${connectionId} for hibernation`);
+      this.state.acceptWebSocket(server);
 
-      server.addEventListener('close', (event: CloseEvent) => {
-        console.log(`WebSocket ${connectionId} closed: code=${event.code}, reason=${event.reason || 'No reason'}, clean=${event.wasClean}, mobile=${isMobile}`);
-        this.handleDisconnection(connectionId).catch(error => {
-          console.error(`Error handling disconnection for ${connectionId}:`, error);
-        });
-      });
-
-      server.addEventListener('error', (error: Event) => {
-        console.error(`WebSocket error for ${connectionId} (mobile: ${isMobile}):`, error);
-        this.handleDisconnection(connectionId).catch(error => {
-          console.error(`Error handling disconnection for ${connectionId}:`, error);
-        });
-      });
-
-      // Accept the server-side WebSocket connection AFTER setting up event listeners
-      server.accept();
-
-      // Send welcome message with connection info
-      this.sendToConnection(connectionId, {
-        type: 'connection_status',
-        data: {
-          status: 'connected',
-          connectionId,
-          isMobile,
-          timestamp: new Date().toISOString()
-        }
-      });
-
-      // For mobile connections, send a ping to test stability
-      if (isMobile) {
-        setTimeout(() => {
-          if (this.connections.has(connectionId)) {
-            this.sendToConnection(connectionId, {
-              type: 'ping',
-              timestamp: new Date().toISOString()
-            });
-          }
-        }, 1000);
-      }
+      console.log(`🟡 HIBERNATION: WebSocket ${connectionId} accepted - now hibernating`);
+      // NOTE: Cannot send messages here - must wait for webSocketMessage handler
 
       // Return the client-side WebSocket to complete the handshake
       return new Response(null, {
@@ -207,6 +190,17 @@ export class ConnectionManager {
     // Store the user-connection mapping
     this.userConnections.set(username, connectionId);
     this.connectionUsers.set(connectionId, username);
+
+    // Update WebSocket attachment with username
+    const ws = this.connections.get(connectionId);
+    if (ws) {
+      const currentAttachment = ws.deserializeAttachment() || {};
+      ws.serializeAttachment({
+        ...currentAttachment,
+        username,
+        authenticatedAt: Date.now()
+      });
+    }
 
     // Update presence tracking
     try {
@@ -620,6 +614,82 @@ export class ConnectionManager {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+  }
+
+  // Hibernation API handlers for Cloudflare Workers
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    console.log('🟡 HIBERNATION: webSocketMessage called');
+
+    let connectionId = this.webSocketConnectionIds.get(ws);
+    if (!connectionId) {
+      // Try to get from attachment
+      const attachment = ws.deserializeAttachment();
+      if (attachment && attachment.connectionId) {
+        connectionId = attachment.connectionId;
+        console.log(`🟡 HIBERNATION: Restored connection ${connectionId} from attachment`);
+        this.webSocketConnectionIds.set(ws, connectionId);
+        this.connections.set(connectionId, ws);
+      } else {
+        console.error('WebSocket message received for unknown connection');
+        return;
+      }
+    }
+
+    console.log(`🟡 HIBERNATION: Message received for connection ${connectionId}: ${message}`);
+
+    // Send welcome message on first message received
+    if (!this.connections.has(connectionId)) {
+      this.connections.set(connectionId, ws);
+      console.log(`🟡 HIBERNATION: Sending welcome message to ${connectionId}`);
+      ws.send(JSON.stringify({
+        type: 'connection_status',
+        data: {
+          status: 'connected',
+          connectionId,
+          timestamp: new Date().toISOString()
+        }
+      }));
+    }
+
+    if (typeof message === 'string') {
+      await this.handleMessage(connectionId, message);
+    } else {
+      console.warn('Binary WebSocket messages not supported');
+    }
+  }
+
+  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean): Promise<void> {
+    console.log('🟡 HIBERNATION: webSocketClose called');
+
+    let connectionId = this.webSocketConnectionIds.get(ws);
+    if (!connectionId) {
+      // Try to get from attachment
+      const attachment = ws.deserializeAttachment();
+      if (attachment && attachment.connectionId) {
+        connectionId = attachment.connectionId;
+        console.log(`🟡 HIBERNATION: Restored connection ${connectionId} from attachment for close`);
+      } else {
+        console.error('WebSocket close for unknown connection');
+        return;
+      }
+    }
+
+    console.log(`🟡 HIBERNATION: WebSocket ${connectionId} closed: code=${code}, reason=${reason || 'No reason'}, clean=${wasClean}`);
+
+    // Clean up connection mappings
+    this.webSocketConnectionIds.delete(ws);
+    this.connections.delete(connectionId);
+
+    await this.handleDisconnection(connectionId);
+  }
+
+  async webSocketError(ws: WebSocket, error: Error): Promise<void> {
+    const connectionId = this.webSocketConnectionIds.get(ws);
+    console.error(`WebSocket error for ${connectionId || 'unknown'}:`, error);
+
+    if (connectionId) {
+      await this.handleDisconnection(connectionId);
     }
   }
 }

@@ -98,13 +98,29 @@ export function usePresence({
     };
   }, []);
 
+  // Logout function to immediately remove user from presence
+  const logoutPresence = useCallback(async () => {
+    if (!username) return;
+
+    try {
+      await apiService.logoutPresence(username);
+      // Clear local state immediately
+      setOnlineUsers([]);
+      setTotalOnline(0);
+      setLastUpdate(Date.now());
+    } catch {
+      // Silent fail for logout cleanup
+    }
+  }, [username]);
+
   return {
     onlineUsers,
     totalOnline,
     isLoading,
     error,
     lastUpdate,
-    sendHeartbeat
+    sendHeartbeat,
+    logoutPresence
   };
 }
 

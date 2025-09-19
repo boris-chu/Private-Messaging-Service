@@ -1,12 +1,14 @@
 import { SessionManager } from './sessions';
 import { ConnectionManager } from './connections';
+import { PresenceService } from './presenceService';
 
-export { SessionManager, ConnectionManager };
+export { SessionManager, ConnectionManager, PresenceService };
 
 // Environment interface
 export interface Env {
   SESSIONS: DurableObjectNamespace;
   CONNECTIONS: DurableObjectNamespace;
+  PRESENCE: DurableObjectNamespace;
   TURNSTILE_SECRET_KEY?: string;
   ENVIRONMENT?: string;
 }
@@ -62,7 +64,8 @@ export default {
           websocket: 'ws://*/api/v1/ws',
           anonymous: '/api/v1/auth/anonymous',
           heartbeat: '/api/v1/users/heartbeat',
-          availability: '/api/v1/users/check-availability/{username}'
+          availability: '/api/v1/users/check-availability/{username}',
+          presence: '/api/v1/presence/*'
         }
       }), {
         headers: {
@@ -134,6 +137,10 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
     case path === '/connections':
       return handleConnectionsAPI(request, env);
 
+    // Presence management endpoints
+    case path.startsWith('/presence'):
+      return handlePresenceAPI(request, env, path);
+
     default:
       return new Response(JSON.stringify({
         error: 'API endpoint not found',
@@ -146,7 +153,8 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
           '/api/v1/users/heartbeat',
           '/api/v1/users/check-availability/{username}',
           '/api/v1/ws',
-          '/api/v1/connections'
+          '/api/v1/connections',
+          '/api/v1/presence'
         ]
       }), {
         status: 404,
@@ -403,8 +411,12 @@ async function handleUserHeartbeat(request: Request, env: Env): Promise<Response
   }
 
   try {
-    const body = await request.json() as { username?: string };
-    const { username } = body;
+    const body = await request.json() as {
+      username?: string;
+      displayName?: string;
+      isAnonymous?: boolean;
+    };
+    const { username, displayName, isAnonymous } = body;
 
     if (!username) {
       return new Response(JSON.stringify({
@@ -437,16 +449,43 @@ async function handleUserHeartbeat(request: Request, env: Env): Promise<Response
       });
     }
 
-    // Update user status (this will update lastSeen timestamp)
+    // Update user status in session manager
     await sessionObject.fetch('http://session/heartbeat', {
       method: 'POST',
       body: JSON.stringify({ username }),
     });
 
+    // Also update presence service for real-time presence tracking
+    const presenceId = env.PRESENCE.idFromName('global');
+    const presenceObject = env.PRESENCE.get(presenceId);
+
+    const presenceResponse = await presenceObject.fetch('http://presence/heartbeat', {
+      method: 'POST',
+      body: JSON.stringify({
+        username,
+        displayName: displayName || username,
+        isAnonymous: isAnonymous || false
+      }),
+    });
+
+    if (presenceResponse.ok) {
+      // Return presence response which includes online users list
+      const presenceData = await presenceResponse.json();
+      return new Response(JSON.stringify(presenceData), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    // Fallback response if presence service fails
     return new Response(JSON.stringify({
       success: true,
       message: 'Heartbeat recorded',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      onlineUsers: [],
+      totalOnline: 0
     }), {
       headers: {
         'Content-Type': 'application/json',
@@ -698,6 +737,29 @@ async function handleAnonymousLogout(request: Request, env: Env): Promise<Respon
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*'
     }
+  });
+}
+
+async function handlePresenceAPI(request: Request, env: Env, path: string): Promise<Response> {
+  const presenceId = env.PRESENCE.idFromName('global');
+  const presenceObject = env.PRESENCE.get(presenceId);
+
+  // Remove /presence prefix for internal routing
+  const internalPath = path.replace('/presence', '') || '/presence';
+
+  // Route to presence service
+  const response = await presenceObject.fetch(`http://presence${internalPath}`, {
+    method: request.method,
+    headers: request.headers,
+    body: request.body
+  });
+
+  return new Response(await response.text(), {
+    status: response.status,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'application/json',
+    },
   });
 }
 
