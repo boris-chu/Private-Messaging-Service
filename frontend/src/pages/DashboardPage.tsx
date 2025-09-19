@@ -220,7 +220,6 @@ export const DashboardPage: React.FC = () => {
               onSettings={handleSettings}
               onLogout={handleLogout}
               onlineUserCount={presenceTotalOnline}
-              presenceUsers={presenceUsers}
             />
           )}
         </Box>
