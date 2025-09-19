@@ -31,6 +31,14 @@ export class SessionManager {
         return this.getRecoveryData(request);
       case '/login':
         return this.loginUser(request);
+      case '/presence/connect':
+        return this.handleUserConnect(request);
+      case '/presence/disconnect':
+        return this.handleUserDisconnect(request);
+      case '/presence/update':
+        return this.updatePresence(request);
+      case '/presence/list':
+        return this.getOnlineUsers(request);
       default:
         return new Response('Not found', { status: 404 });
     }
@@ -285,6 +293,235 @@ export class SessionManager {
     } catch (error) {
       return new Response(JSON.stringify({
         error: 'Login failed'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+  }
+
+  private async handleUserConnect(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
+
+    try {
+      const body = await request.json() as {
+        username?: string;
+        connectionId?: string;
+      };
+      const { username, connectionId } = body;
+
+      if (!username || !connectionId) {
+        return new Response(JSON.stringify({
+          error: 'Username and connectionId are required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      const user = this.users.get(username);
+      if (!user) {
+        return new Response(JSON.stringify({
+          error: 'User not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      // Initialize connections array if not exists
+      if (!user.connections) {
+        user.connections = [];
+      }
+
+      // Add connection if not already present
+      if (!user.connections.includes(connectionId)) {
+        user.connections.push(connectionId);
+      }
+
+      // Update presence status
+      user.status = 'online';
+      user.lastActivity = new Date().toISOString();
+      user.presenceUpdated = new Date().toISOString();
+      user.lastSeen = new Date().toISOString();
+
+      await this.saveState();
+
+      return new Response(JSON.stringify({
+        success: true,
+        user: {
+          username: user.username,
+          status: user.status,
+          connectionCount: user.connections.length
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Failed to handle user connection'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+  }
+
+  private async handleUserDisconnect(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
+
+    try {
+      const body = await request.json() as {
+        username?: string;
+        connectionId?: string;
+      };
+      const { username, connectionId } = body;
+
+      if (!username || !connectionId) {
+        return new Response(JSON.stringify({
+          error: 'Username and connectionId are required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      const user = this.users.get(username);
+      if (!user) {
+        return new Response(JSON.stringify({
+          error: 'User not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      // Remove connection from user's connections
+      if (user.connections) {
+        user.connections = user.connections.filter(id => id !== connectionId);
+      }
+
+      // Update status based on remaining connections
+      if (!user.connections || user.connections.length === 0) {
+        user.status = 'offline';
+      }
+
+      user.lastSeen = new Date().toISOString();
+      user.presenceUpdated = new Date().toISOString();
+
+      await this.saveState();
+
+      return new Response(JSON.stringify({
+        success: true,
+        user: {
+          username: user.username,
+          status: user.status,
+          connectionCount: user.connections?.length || 0
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Failed to handle user disconnection'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+  }
+
+  private async updatePresence(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
+
+    try {
+      const body = await request.json() as {
+        username?: string;
+        status?: 'online' | 'offline' | 'away';
+      };
+      const { username, status } = body;
+
+      if (!username || !status) {
+        return new Response(JSON.stringify({
+          error: 'Username and status are required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      const user = this.users.get(username);
+      if (!user) {
+        return new Response(JSON.stringify({
+          error: 'User not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      user.status = status;
+      user.lastActivity = new Date().toISOString();
+      user.presenceUpdated = new Date().toISOString();
+      if (status === 'offline') {
+        user.lastSeen = new Date().toISOString();
+      }
+
+      await this.saveState();
+
+      return new Response(JSON.stringify({
+        success: true,
+        user: {
+          username: user.username,
+          status: user.status,
+          lastActivity: user.lastActivity
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Failed to update presence'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+  }
+
+  private async getOnlineUsers(request: Request): Promise<Response> {
+    try {
+      const onlineUsers = Array.from(this.users.values())
+        .filter(user => user.status === 'online' && user.connections && user.connections.length > 0)
+        .map(user => ({
+          username: user.username,
+          fullName: user.fullName,
+          status: user.status,
+          lastActivity: user.lastActivity,
+          connectionCount: user.connections?.length || 0,
+          isAnonymous: user.isAnonymous || false
+        }));
+
+      return new Response(JSON.stringify({
+        success: true,
+        users: onlineUsers,
+        total: onlineUsers.length
+      }), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Failed to get online users'
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -583,11 +820,15 @@ interface UserData {
   company: string;
   registeredAt: string;
   lastSeen: string;
-  status: 'online' | 'offline';
+  status: 'online' | 'offline' | 'away';
   isAnonymous?: boolean;
   sessionId?: string;
   sessionToken?: string;
   recoveryPhrase?: string[];
   recoveryCodes?: string[];
   usedRecoveryCodes?: string[];
+  // New presence tracking fields
+  connections?: string[]; // Array of connection IDs
+  lastActivity?: string;
+  presenceUpdated?: string;
 }

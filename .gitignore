@@ -126,3 +126,6 @@ out/
 *.backup
 *.bak
 *.old
+
+# External reference systems (not part of this project)
+orvale-management-system/

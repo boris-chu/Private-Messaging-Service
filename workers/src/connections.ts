@@ -1,11 +1,23 @@
+import { PresenceManager } from './presence';
+
 export class ConnectionManager {
   private state: DurableObjectState;
+  private env: any;
   private connections: Map<string, WebSocket> = new Map();
   private userConnections: Map<string, string> = new Map(); // username -> connectionId
   private connectionUsers: Map<string, string> = new Map(); // connectionId -> username
+  private presenceManager: PresenceManager | null = null;
 
-  constructor(state: DurableObjectState) {
+  constructor(state: DurableObjectState, env: any) {
     this.state = state;
+    this.env = env;
+  }
+
+  private getPresenceManager(): PresenceManager {
+    if (!this.presenceManager) {
+      this.presenceManager = new PresenceManager(this.state, this.env.SESSIONS);
+    }
+    return this.presenceManager;
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -17,6 +29,12 @@ export class ConnectionManager {
 
     // Handle HTTP requests for connection info
     const url = new URL(request.url);
+
+    // Delegate presence-related requests to PresenceManager
+    if (url.pathname.startsWith('/presence/')) {
+      return this.getPresenceManager().fetch(request);
+    }
+
     switch (url.pathname) {
       case '/connections':
         return this.getConnections();
@@ -53,17 +71,23 @@ export class ConnectionManager {
 
       // Set up event listeners with mobile-specific handling
       webSocket.addEventListener('message', (event: MessageEvent) => {
-        this.handleMessage(connectionId, event.data);
+        this.handleMessage(connectionId, event.data).catch(error => {
+          console.error(`Error handling message from ${connectionId}:`, error);
+        });
       });
 
       webSocket.addEventListener('close', (event: CloseEvent) => {
         console.log(`WebSocket ${connectionId} closed: code=${event.code}, reason=${event.reason || 'No reason'}, clean=${event.wasClean}, mobile=${isMobile}`);
-        this.handleDisconnection(connectionId);
+        this.handleDisconnection(connectionId).catch(error => {
+          console.error(`Error handling disconnection for ${connectionId}:`, error);
+        });
       });
 
       webSocket.addEventListener('error', (error: Event) => {
         console.error(`WebSocket error for ${connectionId} (mobile: ${isMobile}):`, error);
-        this.handleDisconnection(connectionId);
+        this.handleDisconnection(connectionId).catch(error => {
+          console.error(`Error handling disconnection for ${connectionId}:`, error);
+        });
       });
 
       // Send welcome message with connection info
@@ -97,17 +121,17 @@ export class ConnectionManager {
     }
   }
 
-  private handleMessage(connectionId: string, data: string): void {
+  private async handleMessage(connectionId: string, data: string): Promise<void> {
     try {
       const message = JSON.parse(data);
       console.log(`🟢 BACKEND: Message from ${connectionId}:`, message);
 
       switch (message.type) {
         case 'auth':
-          this.handleAuthentication(connectionId, message);
+          await this.handleAuthentication(connectionId, message);
           break;
         case 'authenticate':
-          this.handleAuthentication(connectionId, message);
+          await this.handleAuthentication(connectionId, message);
           break;
         case 'message':
           this.relayMessage(connectionId, message);
@@ -116,7 +140,7 @@ export class ConnectionManager {
           this.relayEncryptedMessage(connectionId, message);
           break;
         case 'user_list_request':
-          this.handleUserListRequest(connectionId);
+          await this.handleUserListRequest(connectionId);
           break;
         case 'public_key_exchange':
           this.relayPublicKeyExchange(connectionId, message);
@@ -153,7 +177,7 @@ export class ConnectionManager {
     }
   }
 
-  private handleAuthentication(connectionId: string, message: any): void {
+  private async handleAuthentication(connectionId: string, message: any): Promise<void> {
     const { data, username: directUsername } = message;
     const username = data?.username || directUsername || data?.token;
 
@@ -177,6 +201,26 @@ export class ConnectionManager {
     this.userConnections.set(username, connectionId);
     this.connectionUsers.set(connectionId, username);
 
+    // Update presence tracking
+    try {
+      const clientInfo = {
+        userAgent: message.userAgent,
+        isMobile: message.isMobile,
+        clientIP: message.clientIP
+      };
+
+      await this.getPresenceManager().handleConnect({
+        connectionId,
+        username,
+        clientInfo
+      });
+
+      console.log(`DEBUG: User ${username} presence updated successfully`);
+    } catch (error) {
+      console.error(`Failed to update presence for ${username}:`, error);
+      // Continue with authentication even if presence update fails
+    }
+
     console.log(`DEBUG: User ${username} authenticated on connection ${connectionId}. Current user mappings:`, {
       totalConnections: this.connections.size,
       totalUsers: this.connectionUsers.size,
@@ -192,28 +236,53 @@ export class ConnectionManager {
       }
     });
 
-    // Send the current list of online users to the newly authenticated user
-    const currentUsers = Array.from(this.connectionUsers.values()).filter(u => u !== username);
-    console.log(`DEBUG: Sending user list to ${username}:`, { currentUsers, totalOtherUsers: currentUsers.length });
+    // Get online users from PresenceManager for accurate count
+    try {
+      const onlineUsers = await this.getPresenceManager().getOnlineUsersList();
+      const filteredUsers = onlineUsers.filter(u => u !== username);
 
-    if (currentUsers.length > 0) {
-      this.sendToConnection(connectionId, {
-        type: 'user_list',
-        data: { users: currentUsers },
+      console.log(`DEBUG: Sending presence-based user list to ${username}:`, {
+        filteredUsers,
+        totalOtherUsers: filteredUsers.length
+      });
+
+      if (filteredUsers.length > 0) {
+        this.sendToConnection(connectionId, {
+          type: 'user_list',
+          data: { users: filteredUsers },
+          timestamp: Date.now()
+        });
+        console.log(`DEBUG: User list sent to ${username}`);
+      } else {
+        console.log(`DEBUG: No other users online, not sending user list to ${username}`);
+      }
+
+      // Broadcast user joined event to others
+      console.log(`DEBUG: Broadcasting user_joined event for ${username} to other users`);
+      this.broadcastToOthers(connectionId, {
+        type: 'user_joined',
+        data: { user: username },
         timestamp: Date.now()
       });
-      console.log(`DEBUG: User list sent to ${username}`);
-    } else {
-      console.log(`DEBUG: No other users online, not sending user list to ${username}`);
-    }
 
-    // Broadcast user joined event to others
-    console.log(`DEBUG: Broadcasting user_joined event for ${username} to other users`);
-    this.broadcastToOthers(connectionId, {
-      type: 'user_joined',
-      data: { user: username },
-      timestamp: Date.now()
-    });
+    } catch (error) {
+      console.error('Failed to get online users from PresenceManager:', error);
+      // Fallback to connection-based user list
+      const currentUsers = Array.from(this.connectionUsers.values()).filter(u => u !== username);
+      if (currentUsers.length > 0) {
+        this.sendToConnection(connectionId, {
+          type: 'user_list',
+          data: { users: currentUsers },
+          timestamp: Date.now()
+        });
+      }
+
+      this.broadcastToOthers(connectionId, {
+        type: 'user_joined',
+        data: { user: username },
+        timestamp: Date.now()
+      });
+    }
 
     console.log(`User ${username} authenticated on connection ${connectionId}. Total users online: ${this.connectionUsers.size}`);
   }
@@ -348,21 +417,44 @@ export class ConnectionManager {
     });
   }
 
-  private handleUserListRequest(connectionId: string): void {
+  private async handleUserListRequest(connectionId: string): Promise<void> {
     const requestingUser = this.connectionUsers.get(connectionId);
-    const users = Array.from(this.connectionUsers.values());
-    console.log(`DEBUG: User list requested by ${requestingUser || 'unknown'} (${connectionId}):`, {
-      users,
-      totalUsers: users.length,
-      allConnections: this.connections.size
-    });
 
-    this.sendToConnection(connectionId, {
-      type: 'user_list',
-      data: { users },
-      timestamp: Date.now()
-    });
-    console.log(`DEBUG: User list response sent to ${requestingUser || 'unknown'}`);
+    try {
+      // Get accurate online users from PresenceManager
+      const users = await this.getPresenceManager().getOnlineUsersList();
+
+      console.log(`DEBUG: User list requested by ${requestingUser || 'unknown'} (${connectionId}):`, {
+        users,
+        totalUsers: users.length,
+        allConnections: this.connections.size,
+        source: 'PresenceManager'
+      });
+
+      this.sendToConnection(connectionId, {
+        type: 'user_list',
+        data: { users },
+        timestamp: Date.now()
+      });
+      console.log(`DEBUG: Presence-based user list response sent to ${requestingUser || 'unknown'}`);
+    } catch (error) {
+      console.error('Failed to get users from PresenceManager, falling back to connection-based list:', error);
+
+      // Fallback to connection-based user list
+      const users = Array.from(this.connectionUsers.values());
+      console.log(`DEBUG: Fallback user list for ${requestingUser || 'unknown'}:`, {
+        users,
+        totalUsers: users.length,
+        source: 'ConnectionManager fallback'
+      });
+
+      this.sendToConnection(connectionId, {
+        type: 'user_list',
+        data: { users },
+        timestamp: Date.now()
+      });
+      console.log(`DEBUG: Fallback user list response sent to ${requestingUser || 'unknown'}`);
+    }
   }
 
   private relayPublicKeyExchange(connectionId: string, message: any): void {
@@ -414,18 +506,44 @@ export class ConnectionManager {
     }
   }
 
-  private handleDisconnection(connectionId: string): void {
+  private async handleDisconnection(connectionId: string): Promise<void> {
     const username = this.connectionUsers.get(connectionId);
 
     if (username) {
-      // Broadcast user left event
-      this.broadcastToOthers(connectionId, {
-        type: 'user_left',
-        data: { user: username },
-        timestamp: Date.now()
-      });
+      // Update presence tracking
+      try {
+        await this.getPresenceManager().handleDisconnect({ connectionId });
 
-      // Clean up mappings
+        console.log(`DEBUG: User ${username} presence disconnection updated successfully`);
+      } catch (error) {
+        console.error(`Failed to update presence disconnection for ${username}:`, error);
+      }
+
+      // Check if user still has other connections through PresenceManager
+      try {
+        const isStillOnline = this.getPresenceManager().isUserOnline(username);
+
+        // Only broadcast user_left if they have no more connections
+        if (!isStillOnline) {
+          this.broadcastToOthers(connectionId, {
+            type: 'user_left',
+            data: { user: username },
+            timestamp: Date.now()
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check user online status:', error);
+        // Fallback: broadcast user_left if this was their only connection
+        if (this.userConnections.get(username) === connectionId) {
+          this.broadcastToOthers(connectionId, {
+            type: 'user_left',
+            data: { user: username },
+            timestamp: Date.now()
+          });
+        }
+      }
+
+      // Clean up local mappings
       this.userConnections.delete(username);
       this.connectionUsers.delete(connectionId);
     }
