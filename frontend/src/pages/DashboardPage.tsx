@@ -181,19 +181,19 @@ export const DashboardPage: React.FC = () => {
     const userJoinedWrapper = () => handleUserJoined();
     const userLeftWrapper = () => handleUserLeft();
 
-    messageService.on('connection_status', connectionStatusWrapper);
-    messageService.on('user_list', userListWrapper);
-    messageService.on('user_joined', userJoinedWrapper);
-    messageService.on('user_left', userLeftWrapper);
+    sseService.on('connection_status', connectionStatusWrapper);
+    sseService.on('user_list', userListWrapper);
+    sseService.on('user_joined', userJoinedWrapper);
+    sseService.on('user_left', userLeftWrapper);
 
     // Set initial connection state
     setConnected(messageService.isConnected);
 
     return () => {
-      messageService.off('connection_status', connectionStatusWrapper);
-      messageService.off('user_list', userListWrapper);
-      messageService.off('user_joined', userJoinedWrapper);
-      messageService.off('user_left', userLeftWrapper);
+      sseService.off('connection_status', connectionStatusWrapper);
+      sseService.off('user_list', userListWrapper);
+      sseService.off('user_joined', userJoinedWrapper);
+      sseService.off('user_left', userLeftWrapper);
     };
   }, []);
 
