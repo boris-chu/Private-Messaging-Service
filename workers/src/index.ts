@@ -27,8 +27,19 @@ export default {
     }
 
     // Handle WebSocket upgrade for messaging
-    console.log(`🟢 MAIN: Checking WebSocket upgrade. Upgrade header: "${request.headers.get('Upgrade')}", URL: ${request.url}`);
-    if (request.headers.get('Upgrade') === 'websocket') {
+    const upgradeHeader = request.headers.get('Upgrade');
+    const connectionHeader = request.headers.get('Connection');
+    const wsKey = request.headers.get('Sec-WebSocket-Key');
+    const wsVersion = request.headers.get('Sec-WebSocket-Version');
+
+    console.log(`🟢 MAIN: Checking WebSocket upgrade. Upgrade: "${upgradeHeader}", Connection: "${connectionHeader}", WS-Key: "${wsKey}", WS-Version: "${wsVersion}", URL: ${request.url}`);
+
+    // Check for WebSocket upgrade using multiple header indicators
+    const isWebSocket = upgradeHeader === 'websocket' ||
+                       (wsKey && wsVersion) ||
+                       (connectionHeader && connectionHeader.toLowerCase().includes('upgrade'));
+
+    if (isWebSocket) {
       console.log(`🟢 MAIN: WebSocket upgrade detected! Calling handleWebSocket`);
       return handleWebSocket(request, env);
     }
@@ -295,6 +306,29 @@ async function handleUserLogin(request: Request, env: Env): Promise<Response> {
       }), {
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
+    }
+
+    // Verify credentials against SessionManager
+    if (username && password) {
+      const sessionId = env.SESSIONS.idFromName('global');
+      const sessionObject = env.SESSIONS.get(sessionId);
+
+      const userResponse = await sessionObject.fetch(`http://session/user?username=${username}`);
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json() as { password?: string; fullName?: string; };
+
+        // Simple password comparison (TODO: implement proper hashing)
+        if (userData.password === password) {
+          return new Response(JSON.stringify({
+            success: true,
+            token: `token-${username}-${Date.now()}`,
+            user: { username, fullName: userData.fullName || username }
+          }), {
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          });
+        }
+      }
     }
 
     return new Response(JSON.stringify({

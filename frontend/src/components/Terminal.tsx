@@ -269,7 +269,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           if (!messageService.isConnected) {
             terminal.writeln('\x1b[33m[INIT]\x1b[0m Initializing secure connection protocol...');
             terminal.writeln('\x1b[36m[WEBSOCKET]\x1b[0m Creating WebSocket connection...');
-            terminal.writeln(`\x1b[90m[TARGET]\x1b[0m ${import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev'}/api/v1/ws`);
+            terminal.writeln(`\x1b[90m[TARGET]\x1b[0m ${import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev'}/ws`);
 
             messageService.connect()
               .then(() => {
@@ -409,7 +409,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           // Test WebSocket connectivity separately
           terminal.writeln('\x1b[33m[WEBSOCKET TEST]\x1b[0m Testing WebSocket connection...');
           const wsUrl = import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev';
-          const testWs = new WebSocket(`${wsUrl}/api/v1/ws`);
+          const testWs = new WebSocket(`${wsUrl}/ws`);
 
           const wsTimeout = setTimeout(() => {
             terminal.writeln('  WebSocket Test: \x1b[31mTimeout\x1b[0m (>5s)');
@@ -574,7 +574,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('');
 
           const wsUrl = import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev';
-          const fullWsUrl = `${wsUrl}/api/v1/ws`;
+          const fullWsUrl = `${wsUrl}/ws`;
 
           terminal.writeln(`\x1b[36m[TEST-1]\x1b[0m Connecting to ${fullWsUrl}`);
 

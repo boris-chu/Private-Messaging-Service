@@ -15,6 +15,9 @@ import {
   IconButton,
   Fade,
   Zoom,
+  Stepper,
+  Step,
+  StepLabel,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -27,6 +30,7 @@ import {
   Lock,
 } from '@mui/icons-material';
 import { apiService } from '../services/apiService';
+import { RecoveryManager } from '../components/RecoveryManager';
 
 interface PasswordStrength {
   score: number;
@@ -37,6 +41,8 @@ interface PasswordStrength {
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const [activeStep, setActiveStep] = useState(0);
+  const [registeredUsername, setRegisteredUsername] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -49,6 +55,8 @@ export const RegisterPage: React.FC = () => {
   const [fieldValidation, setFieldValidation] = useState<Record<string, boolean>>({});
   const [usernameCheckLoading, setUsernameCheckLoading] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+
+  const steps = ['Create Account', 'Secure Your Account'];
 
   const calculatePasswordStrength = (password: string): PasswordStrength => {
     let score = 0;
@@ -182,13 +190,18 @@ export const RegisterPage: React.FC = () => {
       });
 
       if (response.success) {
-        navigate('/login');
+        setRegisteredUsername(formData.username);
+        setActiveStep(1);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRecoveryComplete = () => {
+    navigate('/login');
   };
 
   const isFormValid =
@@ -213,33 +226,59 @@ export const RegisterPage: React.FC = () => {
       }}>
         <Card sx={{
           width: '100%',
-          maxWidth: { xs: '100%', md: 450 },
+          maxWidth: activeStep === 1 ? { xs: '100%', md: 700 } : { xs: '100%', md: 450 },
           bgcolor: '#161b22',
           border: '1px solid #30363d',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
         }}>
           <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-            {/* Header */}
-            <Box sx={{ textAlign: 'center', mb: 4 }}>
-              <Zoom in timeout={800}>
-                <Security sx={{
-                  fontSize: 48,
-                  color: '#00d4aa',
-                  mb: 2,
-                  filter: 'drop-shadow(0 0 10px rgba(0, 212, 170, 0.3))'
-                }} />
-              </Zoom>
-              <Typography variant="h4" component="h1" gutterBottom sx={{
-                fontSize: { xs: '1.75rem', md: '2rem' },
-                fontWeight: 600,
-                color: '#e6edf3'
-              }}>
-                Join Axol Chat
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#8b949e' }}>
-                Axol — private talk, under the shell.
-              </Typography>
-            </Box>
+            {/* Stepper */}
+            <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+              {steps.map((label) => (
+                <Step key={label}>
+                  <StepLabel
+                    sx={{
+                      '& .MuiStepLabel-label': {
+                        color: '#8b949e',
+                        '&.Mui-active': { color: '#00d4aa' },
+                        '&.Mui-completed': { color: '#00d4aa' }
+                      },
+                      '& .MuiStepIcon-root': {
+                        color: '#30363d',
+                        '&.Mui-active': { color: '#00d4aa' },
+                        '&.Mui-completed': { color: '#00d4aa' }
+                      }
+                    }}
+                  >
+                    {label}
+                  </StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+            {/* Step 0: Registration Form */}
+            {activeStep === 0 && (
+              <>
+                {/* Header */}
+                <Box sx={{ textAlign: 'center', mb: 4 }}>
+                  <Zoom in timeout={800}>
+                    <Security sx={{
+                      fontSize: 48,
+                      color: '#00d4aa',
+                      mb: 2,
+                      filter: 'drop-shadow(0 0 10px rgba(0, 212, 170, 0.3))'
+                    }} />
+                  </Zoom>
+                  <Typography variant="h4" component="h1" gutterBottom sx={{
+                    fontSize: { xs: '1.75rem', md: '2rem' },
+                    fontWeight: 600,
+                    color: '#e6edf3'
+                  }}>
+                    Join Axol Chat
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#8b949e' }}>
+                    Axol — private talk, under the shell.
+                  </Typography>
+                </Box>
 
             {error && (
               <Fade in timeout={300}>
@@ -458,24 +497,74 @@ export const RegisterPage: React.FC = () => {
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
 
-              <Box sx={{ textAlign: 'center', mt: 3 }}>
-                <Link
-                  href="/login"
-                  variant="body2"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate('/login');
-                  }}
-                  sx={{
-                    color: '#58a6ff',
-                    textDecoration: 'none',
-                    '&:hover': { textDecoration: 'underline' }
-                  }}
-                >
-                  Already have an account? Sign in
-                </Link>
+                <Box sx={{ textAlign: 'center', mt: 3 }}>
+                  <Link
+                    href="/login"
+                    variant="body2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate('/login');
+                    }}
+                    sx={{
+                      color: '#58a6ff',
+                      textDecoration: 'none',
+                      '&:hover': { textDecoration: 'underline' }
+                    }}
+                  >
+                    Already have an account? Sign in
+                  </Link>
+                </Box>
               </Box>
-            </Box>
+            </>
+            )}
+
+            {/* Step 1: Recovery Keys */}
+            {activeStep === 1 && (
+              <>
+                <Box sx={{ textAlign: 'center', mb: 4 }}>
+                  <Typography variant="h4" component="h1" gutterBottom sx={{
+                    fontSize: { xs: '1.75rem', md: '2rem' },
+                    fontWeight: 600,
+                    color: '#e6edf3'
+                  }}>
+                    Account Created Successfully!
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#8b949e', mb: 3 }}>
+                    Generate recovery options to secure your account
+                  </Typography>
+                </Box>
+
+                <RecoveryManager
+                  username={registeredUsername}
+                  onRecoveryGenerated={() => {}}
+                />
+
+                <Box sx={{ textAlign: 'center', mt: 4 }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleRecoveryComplete}
+                    sx={{
+                      bgcolor: '#00d4aa',
+                      color: '#0d1117',
+                      fontWeight: 600,
+                      minHeight: 48,
+                      '&:hover': {
+                        bgcolor: '#00b894',
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 6px 20px rgba(0, 212, 170, 0.4)',
+                      },
+                      '&:active': { transform: 'translateY(0)' }
+                    }}
+                  >
+                    Continue to Login
+                  </Button>
+                  <Typography variant="body2" sx={{ color: '#8b949e', mt: 2 }}>
+                    You can always generate recovery options later in settings
+                  </Typography>
+                </Box>
+              </>
+            )}
         </CardContent>
       </Card>
       </Container>
