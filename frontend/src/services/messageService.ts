@@ -46,6 +46,7 @@ export interface Message {
   readBy?: string[];
   isEncrypted?: boolean;
   encryptionError?: string;
+  isLobbyMessage?: boolean;
 }
 
 export interface MessageServiceConfig {
@@ -68,6 +69,7 @@ class MessageService {
 
   // Store wrapper functions for proper cleanup
   private messageWrapper = (data: unknown) => this.handleMessage(data as MessageData);
+  private lobbyMessageWrapper = (data: unknown) => this.handleLobbyMessage(data as MessageData);
   private encryptedMessageWrapper = (data: unknown) => this.handleEncryptedMessage(data as MessageData);
   private messageDeliveredWrapper = (data: unknown) => this.handleMessageDelivered(data as MessageData);
   private messageReadWrapper = (data: unknown) => this.handleMessageRead(data as MessageData);
@@ -87,6 +89,7 @@ class MessageService {
 
     // Set up WebSocket listeners with type-safe wrappers
     websocketService.on('message', this.messageWrapper);
+    websocketService.on('lobby_message', this.lobbyMessageWrapper);
     websocketService.on('encrypted_message', this.encryptedMessageWrapper);
     websocketService.on('message_delivered', this.messageDeliveredWrapper);
     websocketService.on('message_read', this.messageReadWrapper);
@@ -165,6 +168,28 @@ class MessageService {
     if (this.config.showReadReceipts && !message.isSelf) {
       this.sendReadReceipt(message.id);
     }
+
+    this.config.onMessageReceived(message);
+  };
+
+  private handleLobbyMessage = (data: MessageData) => {
+    if (!this.config) return;
+
+    const message: Message = {
+      id: data.messageId || Date.now().toString(),
+      content: data.content || '',
+      sender: data.sender || '',
+      timestamp: data.timestamp || Date.now(),
+      isSelf: data.sender === this.currentUser,
+      status: 'delivered',
+      isRead: false,
+      readBy: [],
+      isEncrypted: false, // Lobby messages are always unencrypted
+      isLobbyMessage: true
+    };
+
+    // No delivery confirmation or read receipts for lobby messages
+    console.log(`📢 Received lobby message from ${message.sender}: ${message.content}`);
 
     this.config.onMessageReceived(message);
   };
@@ -310,6 +335,24 @@ class MessageService {
     }
 
     return { messageId, isEncrypted };
+  }
+
+  async sendLobbyMessage(content: string): Promise<{ messageId: string; isEncrypted: boolean }> {
+    const messageId = Date.now().toString();
+
+    // Lobby messages are always unencrypted broadcasts
+    websocketService.send({
+      type: 'lobby_message',
+      data: {
+        content,
+        messageId,
+        requireReadReceipt: false // Lobby messages don't require read receipts
+      },
+      timestamp: Date.now()
+    });
+
+    console.log(`📢 Sent lobby message: ${content}`);
+    return { messageId, isEncrypted: false };
   }
 
   private sendPlainTextMessage(content: string, recipient?: string, messageId?: string) {

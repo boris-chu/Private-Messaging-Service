@@ -21,6 +21,8 @@ import {
   Logout,
   LightMode,
   DarkMode,
+  Forum,
+  Person,
 } from '@mui/icons-material';
 import { messageService } from '../services/messageService';
 import type { Message, MessageStatus } from '../services/messageService';
@@ -71,6 +73,7 @@ export const AxolChat: React.FC<AxolChatProps> = ({
   const currentUser = JSON.parse(localStorage.getItem('user') || '{"username":"guest"}');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isLobbyMode, setIsLobbyMode] = useState(false);
 
   // Load user data
   useEffect(() => {
@@ -175,7 +178,15 @@ export const AxolChat: React.FC<AxolChatProps> = ({
 
   const handleSendMessage = async () => {
     if (inputMessage.trim() && isConnected) {
-      const result = await messageService.sendMessage(inputMessage.trim());
+      let result;
+
+      if (isLobbyMode) {
+        // Send as lobby message (broadcast to all)
+        result = await messageService.sendLobbyMessage(inputMessage.trim());
+      } else {
+        // Send as direct message (existing behavior)
+        result = await messageService.sendMessage(inputMessage.trim());
+      }
 
       // Add the message immediately with "sending" status
       const newMessage: Message = {
@@ -185,7 +196,8 @@ export const AxolChat: React.FC<AxolChatProps> = ({
         timestamp: Date.now(),
         isSelf: true,
         status: 'sending',
-        isEncrypted: result.isEncrypted
+        isEncrypted: result.isEncrypted,
+        isLobbyMessage: isLobbyMode
       };
 
       setMessages(prev => [...prev, newMessage]);
@@ -312,6 +324,29 @@ export const AxolChat: React.FC<AxolChatProps> = ({
                 {onlineUserCount} user{onlineUserCount !== 1 ? 's' : ''} online
               </Typography>
             </Box>
+          )}
+
+          {/* Lobby Mode Toggle */}
+          {isConnected && (
+            <Tooltip title={isLobbyMode ? "Switch to Direct Messages" : "Switch to Lobby Chat"}>
+              <Chip
+                icon={isLobbyMode ? <Forum fontSize="small" /> : <Person fontSize="small" />}
+                label={isLobbyMode ? "Lobby" : "Direct"}
+                variant={isLobbyMode ? "filled" : "outlined"}
+                color={isLobbyMode ? "primary" : "default"}
+                onClick={() => setIsLobbyMode(!isLobbyMode)}
+                size="small"
+                sx={{
+                  ml: { xs: 0.5, sm: 1 },
+                  cursor: 'pointer',
+                  borderColor: isLobbyMode ? undefined : colors.textSecondary,
+                  '& .MuiChip-label': {
+                    fontSize: { xs: '11px', sm: '12px' },
+                    px: { xs: 0.5, sm: 1 }
+                  }
+                }}
+              />
+            </Tooltip>
           )}
         </Box>
 
@@ -482,9 +517,26 @@ export const AxolChat: React.FC<AxolChatProps> = ({
                   alignItems: message.isSelf ? 'flex-end' : 'flex-start'
                 }}>
                   {!message.isSelf && (
-                    <Typography variant="caption" sx={{ mb: 0.5, px: 1, color: colors.textSecondary }}>
-                      {message.sender}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, px: 1 }}>
+                      <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                        {message.sender}
+                      </Typography>
+                      {message.isLobbyMessage && (
+                        <Chip
+                          icon={<Forum sx={{ fontSize: 12 }} />}
+                          label="Lobby"
+                          size="small"
+                          variant="outlined"
+                          sx={{
+                            height: 16,
+                            fontSize: 10,
+                            '& .MuiChip-label': { px: 0.5 },
+                            borderColor: colors.brandColor,
+                            color: colors.brandColor
+                          }}
+                        />
+                      )}
+                    </Box>
                   )}
                   <Paper
                     elevation={0}
@@ -509,6 +561,23 @@ export const AxolChat: React.FC<AxolChatProps> = ({
                     <Typography variant="caption" sx={{ color: colors.textSecondary }}>
                       {formatTime(message.timestamp)}
                     </Typography>
+                    {message.isLobbyMessage && (
+                      <Chip
+                        icon={<Forum sx={{ fontSize: 10 }} />}
+                        label="Lobby"
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          height: 14,
+                          fontSize: 9,
+                          '& .MuiChip-label': { px: 0.3 },
+                          '& .MuiChip-icon': { ml: 0.3 },
+                          borderColor: colors.textSecondary,
+                          color: colors.textSecondary,
+                          opacity: 0.7
+                        }}
+                      />
+                    )}
                     <MessageEncryptionBadge isEncrypted={message.isEncrypted || false} size="small" />
                     {message.isSelf && (
                       message.status === 'sending' ? (

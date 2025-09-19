@@ -194,8 +194,53 @@ export const Terminal: React.FC<TerminalProps> = ({
     let inputMode = 'command'; // 'command' or 'message'
     let messageRecipient = '';
 
+    // Command history (keep last 10 commands)
+    let commandHistory: string[] = [];
+    let historyIndex = -1;
+
     terminal.onData((data) => {
       const char = data.charCodeAt(0);
+
+      // Handle escape sequences (arrow keys)
+      if (char === 27 && data.length === 3) { // ESC sequence
+        if (data === '\x1b[A') { // Up arrow
+          if (inputMode === 'command' && commandHistory.length > 0) {
+            // Clear current input
+            terminal.write('\x1b[2K\r'); // Clear line and return to start
+            showPrompt();
+
+            // Navigate history
+            if (historyIndex === -1) {
+              historyIndex = commandHistory.length - 1;
+            } else if (historyIndex > 0) {
+              historyIndex--;
+            }
+
+            // Set input buffer to historical command
+            inputBuffer = commandHistory[historyIndex];
+            terminal.write(inputBuffer);
+          }
+          return;
+        } else if (data === '\x1b[B') { // Down arrow
+          if (inputMode === 'command' && historyIndex !== -1) {
+            // Clear current input
+            terminal.write('\x1b[2K\r'); // Clear line and return to start
+            showPrompt();
+
+            // Navigate history
+            if (historyIndex < commandHistory.length - 1) {
+              historyIndex++;
+              inputBuffer = commandHistory[historyIndex];
+            } else {
+              historyIndex = -1;
+              inputBuffer = '';
+            }
+
+            terminal.write(inputBuffer);
+          }
+          return;
+        }
+      }
 
       if (char === 13) { // Enter
         terminal.writeln('');
@@ -223,7 +268,20 @@ export const Terminal: React.FC<TerminalProps> = ({
             messageRecipient = '';
             inputMode = 'command';
           } else {
-            handleCommand(inputBuffer.trim());
+            const command = inputBuffer.trim();
+
+            // Add command to history (keep last 10)
+            if (command && !commandHistory.includes(command)) {
+              commandHistory.push(command);
+              if (commandHistory.length > 10) {
+                commandHistory.shift(); // Remove oldest command
+              }
+            }
+
+            // Reset history navigation
+            historyIndex = -1;
+
+            handleCommand(command);
           }
         }
         inputBuffer = '';
@@ -234,6 +292,8 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.write('\b \b');
         }
       } else if (char >= 32) { // Printable characters
+        // Reset history navigation when user starts typing
+        historyIndex = -1;
         inputBuffer += data;
         terminal.write(data);
       }
@@ -258,13 +318,17 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('  \x1b[32mstatus\x1b[0m      - Show connection status');
           terminal.writeln('  \x1b[32musers\x1b[0m       - List online users');
           terminal.writeln('  \x1b[32mmsg <user>\x1b[0m  - Send message to user');
+          terminal.writeln('  \x1b[32msay <msg>\x1b[0m   - Broadcast message to lobby');
           terminal.writeln('  \x1b[32mread mode\x1b[0m   - Show read receipt status');
           terminal.writeln('  \x1b[32mread -on\x1b[0m    - Enable read receipts');
           terminal.writeln('  \x1b[32mread -off\x1b[0m   - Disable read receipts');
           terminal.writeln('  \x1b[32mclear\x1b[0m       - Clear terminal');
           terminal.writeln('  \x1b[32mdebug\x1b[0m       - Show debug info (mobile/network)');
           terminal.writeln('  \x1b[32mwstest\x1b[0m      - Test WebSocket connection stability');
+          terminal.writeln('  \x1b[32mhistory\x1b[0m     - Show command history');
           terminal.writeln('  \x1b[32mhelp\x1b[0m        - Show this help');
+          terminal.writeln('');
+          terminal.writeln('\x1b[90mTip: Use ↑/↓ arrow keys to navigate command history\x1b[0m');
           terminal.writeln('');
           break;
 
@@ -355,6 +419,18 @@ export const Terminal: React.FC<TerminalProps> = ({
 
         case 'clear':
           terminal.clear();
+          break;
+
+        case 'history':
+          terminal.writeln('\x1b[33mCommand History:\x1b[0m');
+          if (commandHistory.length === 0) {
+            terminal.writeln('  \x1b[90mNo commands in history\x1b[0m');
+          } else {
+            commandHistory.forEach((cmd, index) => {
+              terminal.writeln(`  \x1b[90m${index + 1}\x1b[0m  \x1b[36m${cmd}\x1b[0m`);
+            });
+          }
+          terminal.writeln('');
           break;
 
         case 'debug': {
@@ -537,7 +613,29 @@ export const Terminal: React.FC<TerminalProps> = ({
           break;
 
         default:
-          if (cmd.startsWith('msg ')) {
+          if (cmd.startsWith('say ')) {
+            const message = cmd.substring(4).trim();
+            if (message) {
+              if (messageService.isConnected) {
+                terminal.writeln(`\x1b[33m[LOBBY]\x1b[0m Broadcasting: \x1b[36m${message}\x1b[0m`);
+
+                // Send lobby message using dedicated method
+                messageService.sendLobbyMessage(message).then(({ messageId, isEncrypted }) => {
+                  const encStatus = isEncrypted ? '\x1b[32m[🔒]\x1b[0m' : '\x1b[90m[📢]\x1b[0m';
+                  terminal.writeln(`\x1b[90m[SENT]\x1b[0m ${encStatus} Message broadcast to lobby`);
+                  showPrompt();
+                }).catch((error) => {
+                  terminal.writeln(`\x1b[31m[ERROR]\x1b[0m Failed to send: ${error.message}`);
+                  showPrompt();
+                });
+              } else {
+                terminal.writeln('\x1b[31mNot connected to server\x1b[0m');
+              }
+            } else {
+              terminal.writeln('\x1b[31mUsage: say <message>\x1b[0m');
+              terminal.writeln('\x1b[90mBroadcast a message to all connected users in the lobby\x1b[0m');
+            }
+          } else if (cmd.startsWith('msg ')) {
             const user = cmd.substring(4).trim();
             if (user) {
               if (messageService.isConnected) {
@@ -668,9 +766,20 @@ export const Terminal: React.FC<TerminalProps> = ({
       showOnlineStatus: privacySettings.showOnlineStatus,
       onMessageReceived: (message: Message) => {
         const timestamp = new Date(message.timestamp).toLocaleTimeString();
-        const encryptionIndicator = message.isEncrypted ? '\x1b[32m[🔒]\x1b[0m' : '\x1b[31m[📢]\x1b[0m';
-        const errorIndicator = message.encryptionError ? '\x1b[31m[❌]\x1b[0m' : '';
-        const messageText = `\x1b[34m[${timestamp}]\x1b[0m ${encryptionIndicator}${errorIndicator} \x1b[36m${message.sender}\x1b[0m: ${message.content}`;
+        let messageText: string;
+
+        if (message.isLobbyMessage) {
+          // Special formatting for lobby messages
+          const lobbyTag = '\x1b[33m[LOBBY]\x1b[0m';
+          const senderColor = message.isSelf ? '\x1b[32m' : '\x1b[36m'; // Green for self, cyan for others
+          messageText = `\x1b[34m[${timestamp}]\x1b[0m ${lobbyTag} ${senderColor}${message.sender}\x1b[0m: ${message.content}`;
+        } else {
+          // Regular direct message formatting
+          const encryptionIndicator = message.isEncrypted ? '\x1b[32m[🔒]\x1b[0m' : '\x1b[31m[📢]\x1b[0m';
+          const errorIndicator = message.encryptionError ? '\x1b[31m[❌]\x1b[0m' : '';
+          messageText = `\x1b[34m[${timestamp}]\x1b[0m ${encryptionIndicator}${errorIndicator} \x1b[36m${message.sender}\x1b[0m: ${message.content}`;
+        }
+
         addTerminalMessage(messageText);
         showPrompt();
       },

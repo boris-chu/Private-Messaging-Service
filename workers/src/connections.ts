@@ -126,6 +126,9 @@ export class ConnectionManager {
         case 'message':
           this.relayMessage(connectionId, message);
           break;
+        case 'lobby_message':
+          this.relayLobbyMessage(connectionId, message);
+          break;
         case 'encrypted_message':
           this.relayEncryptedMessage(connectionId, message);
           break;
@@ -416,6 +419,34 @@ export class ConnectionManager {
       sender,
       timestamp: Date.now()
     });
+  }
+
+  private relayLobbyMessage(connectionId: string, message: any): void {
+    const sender = this.connectionUsers.get(connectionId);
+    if (!sender) {
+      this.sendToConnection(connectionId, {
+        type: 'error',
+        data: { error: 'Not authenticated' }
+      });
+      return;
+    }
+
+    console.log(`🟢 LOBBY: ${sender} broadcasting message: ${message.data?.content}`);
+
+    // Broadcast lobby message to ALL connected users (including sender for confirmation)
+    this.connections.forEach((ws, connId) => {
+      this.sendToConnection(connId, {
+        type: 'lobby_message',
+        data: {
+          content: message.data?.content,
+          messageId: message.data?.messageId
+        },
+        sender,
+        timestamp: Date.now()
+      });
+    });
+
+    console.log(`🟢 LOBBY: Message broadcast to ${this.connections.size} users`);
   }
 
   private async handleUserListRequest(connectionId: string): Promise<void> {
