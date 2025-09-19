@@ -90,7 +90,7 @@ class WebSocketService {
       this.connectionStatus = 'connecting';
       this.emit('connection_status', { status: 'connecting' });
 
-      const wsUrl = import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev';
+      const wsUrl = import.meta.env.VITE_WS_URL || 'wss://api.axolchat.cc';
       const fullUrl = `${wsUrl}/ws`;
 
       console.log(`🔗 Connecting to WebSocket: ${fullUrl}`);

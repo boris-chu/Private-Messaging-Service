@@ -263,7 +263,7 @@ export const WebSocketDebugPanel: React.FC<WebSocketDebugPanelProps> = ({
     });
 
     try {
-      const apiUrl = 'https://secure-messaging.boris-chu.workers.dev/api/v1/users';
+      const apiUrl = 'https://api.axolchat.cc/api/v1/users';
       console.log(`🧪 Testing backend HTTP: ${apiUrl}`);
 
       const response = await fetch(apiUrl);

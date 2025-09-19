@@ -16,6 +16,11 @@ bindings = [
 tag = "v1"
 new_sqlite_classes = ["SessionManager", "ConnectionManager"]
 
+# Custom domain routes
+[[routes]]
+pattern = "api.axolchat.cc/*"
+zone_name = "axolchat.cc"
+
 [vars]
 ENVIRONMENT = "development"
 

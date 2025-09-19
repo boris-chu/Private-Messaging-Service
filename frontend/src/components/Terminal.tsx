@@ -269,7 +269,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           if (!messageService.isConnected) {
             terminal.writeln('\x1b[33m[INIT]\x1b[0m Initializing secure connection protocol...');
             terminal.writeln('\x1b[36m[WEBSOCKET]\x1b[0m Creating WebSocket connection...');
-            terminal.writeln(`\x1b[90m[TARGET]\x1b[0m ${import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev'}/ws`);
+            terminal.writeln(`\x1b[90m[TARGET]\x1b[0m ${import.meta.env.VITE_WS_URL || 'wss://api.axolchat.cc'}/ws`);
 
             messageService.connect()
               .then(() => {
@@ -370,7 +370,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           // WebSocket info
           terminal.writeln('\x1b[1;36mConnection:\x1b[0m');
           terminal.writeln(`  Connection Status: ${messageService.isConnected ? 'Connected' : 'Disconnected'}`);
-          terminal.writeln(`  WebSocket URL: ${import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev'}`);
+          terminal.writeln(`  WebSocket URL: ${import.meta.env.VITE_WS_URL || 'wss://api.axolchat.cc'}`);
 
           // Try to get more WebSocket details
           try {
@@ -404,11 +404,11 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('\x1b[33mTesting connectivity...\x1b[0m');
 
           // Test fetch to the API
-          const apiUrl = (import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev').replace('wss://', 'https://').replace('ws://', 'http://');
+          const apiUrl = (import.meta.env.VITE_WS_URL || 'wss://api.axolchat.cc').replace('wss://', 'https://').replace('ws://', 'http://');
 
           // Test WebSocket connectivity separately
           terminal.writeln('\x1b[33m[WEBSOCKET TEST]\x1b[0m Testing WebSocket connection...');
-          const wsUrl = import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev';
+          const wsUrl = import.meta.env.VITE_WS_URL || 'wss://api.axolchat.cc';
           const testWs = new WebSocket(`${wsUrl}/ws`);
 
           const wsTimeout = setTimeout(() => {
@@ -573,7 +573,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           terminal.writeln('\x1b[90mTesting connection persistence and stability...\x1b[0m');
           terminal.writeln('');
 
-          const wsUrl = import.meta.env.VITE_WS_URL || 'wss://secure-messaging.boris-chu.workers.dev';
+          const wsUrl = import.meta.env.VITE_WS_URL || 'wss://api.axolchat.cc';
           const fullWsUrl = `${wsUrl}/ws`;
 
           terminal.writeln(`\x1b[36m[TEST-1]\x1b[0m Connecting to ${fullWsUrl}`);
