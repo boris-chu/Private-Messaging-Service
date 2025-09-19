@@ -29,6 +29,8 @@ export class SessionManager {
         return this.verifyRecoveryCode(request);
       case '/recovery/get':
         return this.getRecoveryData(request);
+      case '/login':
+        return this.loginUser(request);
       default:
         return new Response('Not found', { status: 404 });
     }
@@ -216,6 +218,73 @@ export class SessionManager {
     } catch (error) {
       return new Response(JSON.stringify({
         error: 'Anonymous registration failed'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+  }
+
+  private async loginUser(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
+
+    try {
+      const body = await request.json() as {
+        username?: string;
+        password?: string;
+      };
+      const { username, password } = body;
+
+      if (!username || !password) {
+        return new Response(JSON.stringify({
+          error: 'Username and password are required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      const user = this.users.get(username);
+      if (!user) {
+        return new Response(JSON.stringify({
+          error: 'Invalid credentials'
+        }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      // Simple password comparison (TODO: implement proper hashing)
+      if (user.password !== password) {
+        return new Response(JSON.stringify({
+          error: 'Invalid credentials'
+        }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+
+      // Update user status to online
+      user.status = 'online';
+      user.lastSeen = new Date().toISOString();
+      await this.saveState();
+
+      return new Response(JSON.stringify({
+        success: true,
+        token: `token-${username}-${Date.now()}`,
+        user: {
+          username: user.username,
+          fullName: user.fullName
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Login failed'
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }

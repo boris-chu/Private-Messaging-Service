@@ -323,22 +323,11 @@ async function handleUserLogin(request: Request, env: Env): Promise<Response> {
       const sessionId = env.SESSIONS.idFromName('global');
       const sessionObject = env.SESSIONS.get(sessionId);
 
-      const userResponse = await sessionObject.fetch(`http://session/user?username=${username}`);
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json() as { password?: string; fullName?: string; };
-
-        // Simple password comparison (TODO: implement proper hashing)
-        if (userData.password === password) {
-          return new Response(JSON.stringify({
-            success: true,
-            token: `token-${username}-${Date.now()}`,
-            user: { username, fullName: userData.fullName || username }
-          }), {
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-          });
-        }
-      }
+      return sessionObject.fetch('http://session/login', {
+        method: 'POST',
+        headers: request.headers,
+        body: request.body
+      });
     }
 
     return new Response(JSON.stringify({
