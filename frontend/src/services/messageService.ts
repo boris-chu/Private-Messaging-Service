@@ -131,6 +131,7 @@ class MessageService {
 
   cleanup() {
     websocketService.off('message', this.messageWrapper);
+    websocketService.off('lobby_message', this.lobbyMessageWrapper);
     websocketService.off('encrypted_message', this.encryptedMessageWrapper);
     websocketService.off('message_delivered', this.messageDeliveredWrapper);
     websocketService.off('message_read', this.messageReadWrapper);
