@@ -434,7 +434,44 @@ async function handleUserHeartbeat(request: Request, env: Env): Promise<Response
     const sessionId = env.SESSIONS.idFromName('global');
     const sessionObject = env.SESSIONS.get(sessionId);
 
-    // Check if user exists first
+    // For anonymous users, skip session manager entirely and go directly to presence service
+    if (isAnonymous) {
+      // Skip session manager for anonymous users - go directly to presence service
+      const presenceId = env.PRESENCE.idFromName('global');
+      const presenceObject = env.PRESENCE.get(presenceId);
+
+      const presenceResponse = await presenceObject.fetch('http://presence/heartbeat', {
+        method: 'POST',
+        body: JSON.stringify({
+          username,
+          displayName: displayName || username,
+          isAnonymous: true
+        }),
+      });
+
+      if (presenceResponse.ok) {
+        // Return presence response which includes online users list
+        const presenceData = await presenceResponse.json();
+        return new Response(JSON.stringify(presenceData), {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      } else {
+        return new Response(JSON.stringify({
+          error: 'Presence update failed'
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+
+    // For regular users, check if user exists in session manager
     const userResponse = await sessionObject.fetch(`http://session/user?username=${username}`);
 
     if (!userResponse.ok) {
@@ -745,7 +782,7 @@ async function handlePresenceAPI(request: Request, env: Env, path: string): Prom
   const presenceObject = env.PRESENCE.get(presenceId);
 
   // Remove /presence prefix for internal routing
-  const internalPath = path.replace('/presence', '') || '/presence';
+  const internalPath = path.replace('/presence', '') || '/';
 
   // Route to presence service
   const response = await presenceObject.fetch(`http://presence${internalPath}`, {
