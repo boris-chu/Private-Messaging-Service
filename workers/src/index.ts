@@ -1,8 +1,9 @@
 import { SessionManager } from './sessions';
 import { ConnectionManager } from './connections';
 import { PresenceService } from './presenceService';
+import { SSEService } from './sseService';
 
-export { SessionManager, ConnectionManager, PresenceService };
+export { SessionManager, ConnectionManager, PresenceService, SSEService };
 
 // Environment interface
 export interface Env {
@@ -141,6 +142,14 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
     case path.startsWith('/presence'):
       return handlePresenceAPI(request, env, path);
 
+    // Server-Sent Events endpoint for real-time message delivery
+    case path === '/events':
+      return new SSEService(env).handleSSEConnection(request);
+
+    // HTTP POST endpoint for sending messages
+    case path === '/messages':
+      return new SSEService(env).handleMessagePost(request);
+
     default:
       return new Response(JSON.stringify({
         error: 'API endpoint not found',
@@ -154,7 +163,9 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
           '/api/v1/users/check-availability/{username}',
           '/api/v1/ws',
           '/api/v1/connections',
-          '/api/v1/presence'
+          '/api/v1/presence',
+          '/api/v1/events (SSE)',
+          '/api/v1/messages'
         ]
       }), {
         status: 404,

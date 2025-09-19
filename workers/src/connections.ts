@@ -9,6 +9,11 @@ export class ConnectionManager {
   private presenceManager: PresenceManager | null = null;
   private webSocketConnectionIds: Map<WebSocket, string> = new Map(); // WebSocket -> connectionId
 
+  // SSE connections
+  private sseConnections: Map<string, WritableStream> = new Map(); // connectionId -> WritableStream
+  private sseUserConnections: Map<string, string> = new Map(); // username -> connectionId for SSE
+  private sseConnectionUsers: Map<string, string> = new Map(); // connectionId -> username for SSE
+
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
     this.env = env;
@@ -56,8 +61,12 @@ export class ConnectionManager {
         return this.getConnections();
       case '/broadcast':
         return this.broadcastMessage(request);
+      case '/sse':
+        return this.handleSSEConnection(request);
+      case '/message':
+        return this.handleHTTPMessage(request);
       default:
-        return new Response('Expected WebSocket', { status: 400 });
+        return new Response('Expected WebSocket or SSE', { status: 400 });
     }
   }
 
@@ -721,6 +730,302 @@ export class ConnectionManager {
 
     if (connectionId) {
       await this.handleDisconnection(connectionId);
+    }
+  }
+
+  // SSE Connection Handler
+  private async handleSSEConnection(request: Request): Promise<Response> {
+    const username = request.headers.get('X-Username');
+    const userId = request.headers.get('X-User-ID');
+    const clientIP = request.headers.get('X-Client-IP') || 'unknown';
+
+    if (!username) {
+      return new Response(JSON.stringify({
+        error: 'Username required for SSE connection'
+      }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    const connectionId = crypto.randomUUID();
+
+    console.log(`SSE: New connection for ${username} (${connectionId}) from ${clientIP}`);
+
+    // Create SSE response stream
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    // Store SSE connection
+    this.sseConnections.set(connectionId, writable);
+    this.sseUserConnections.set(username, connectionId);
+    this.sseConnectionUsers.set(connectionId, username);
+
+    // Send initial connection event
+    try {
+      await writer.write(encoder.encode(`data: ${JSON.stringify({
+        type: 'connection_status',
+        data: { status: 'connected', connectionId },
+        timestamp: Date.now()
+      })}\n\n`));
+
+      // Register with presence manager if available
+      if (this.presenceManager) {
+        await this.presenceManager.updateUserPresence(username, true);
+      }
+
+      // Send user list
+      await this.sendSSEUserList(connectionId);
+
+    } catch (error) {
+      console.error(`SSE: Failed to send initial events to ${connectionId}:`, error);
+      this.cleanupSSEConnection(connectionId);
+    }
+
+    // Handle connection cleanup when stream is closed
+    const closeHandler = () => {
+      console.log(`SSE: Connection ${connectionId} closed for ${username}`);
+      this.cleanupSSEConnection(connectionId);
+    };
+
+    // Set up cleanup on close
+    writable.getWriter().closed.then(closeHandler).catch(closeHandler);
+
+    return new Response(readable, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+      }
+    });
+  }
+
+  // HTTP Message Handler
+  private async handleHTTPMessage(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    try {
+      const messageData = await request.json();
+      const sender = request.headers.get('X-Sender');
+
+      console.log(`HTTP Message from ${sender}:`, messageData);
+
+      // Process message based on type
+      switch (messageData.type) {
+        case 'message':
+          this.relayMessageViaSSE(messageData);
+          break;
+        case 'lobby_message':
+          this.relayLobbyMessageViaSSE(messageData);
+          break;
+        case 'encrypted_message':
+          this.relayEncryptedMessageViaSSE(messageData);
+          break;
+        case 'public_key_exchange':
+          this.relayPublicKeyExchangeViaSSE(messageData);
+          break;
+        case 'public_key_request':
+          this.relayPublicKeyRequestViaSSE(messageData);
+          break;
+        default:
+          return new Response(JSON.stringify({
+            error: `Unknown message type: ${messageData.type}`
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        messageId: messageData.messageId || Date.now().toString(),
+        timestamp: Date.now()
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+
+    } catch (error) {
+      console.error('HTTP Message processing error:', error);
+      return new Response(JSON.stringify({
+        error: 'Failed to process message'
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  }
+
+  // SSE Message Broadcasting Methods
+  private relayMessageViaSSE(message: any): void {
+    const eventData = {
+      type: 'message',
+      data: {
+        content: message.content,
+        messageId: message.messageId,
+        sender: message.sender,
+        timestamp: message.timestamp,
+        recipient: message.recipient
+      },
+      sender: message.sender,
+      timestamp: message.timestamp
+    };
+
+    // Send to specific recipient or broadcast to all
+    if (message.recipient) {
+      this.sendToSSEUser(message.recipient, eventData);
+    } else {
+      this.broadcastToSSE(eventData, message.sender);
+    }
+  }
+
+  private relayLobbyMessageViaSSE(message: any): void {
+    const eventData = {
+      type: 'lobby_message',
+      data: {
+        content: message.content,
+        messageId: message.messageId,
+        sender: message.sender,
+        timestamp: message.timestamp
+      },
+      sender: message.sender,
+      timestamp: message.timestamp
+    };
+
+    console.log(`SSE: Broadcasting lobby message from ${message.sender}: ${message.content}`);
+    this.broadcastToSSE(eventData, message.sender);
+  }
+
+  private relayEncryptedMessageViaSSE(message: any): void {
+    const eventData = {
+      type: 'encrypted_message',
+      data: {
+        encryptedContent: message.encryptedContent,
+        messageId: message.messageId,
+        sender: message.sender,
+        timestamp: message.timestamp,
+        isEncrypted: true
+      },
+      sender: message.sender,
+      timestamp: message.timestamp
+    };
+
+    if (message.recipient) {
+      this.sendToSSEUser(message.recipient, eventData);
+    }
+  }
+
+  private relayPublicKeyExchangeViaSSE(message: any): void {
+    const eventData = {
+      type: 'public_key_received',
+      data: {
+        username: message.sender,
+        publicKey: message.publicKey,
+        timestamp: message.timestamp
+      },
+      sender: message.sender,
+      timestamp: message.timestamp
+    };
+
+    this.broadcastToSSE(eventData, message.sender);
+  }
+
+  private relayPublicKeyRequestViaSSE(message: any): void {
+    const eventData = {
+      type: 'public_key_requested',
+      data: {
+        username: message.sender,
+        timestamp: message.timestamp
+      },
+      sender: message.sender,
+      timestamp: message.timestamp
+    };
+
+    this.broadcastToSSE(eventData, message.sender);
+  }
+
+  // SSE Helper Methods
+  private sendToSSEUser(username: string, data: any): void {
+    const connectionId = this.sseUserConnections.get(username);
+    if (connectionId) {
+      this.sendToSSEConnection(connectionId, data);
+    }
+  }
+
+  private broadcastToSSE(data: any, excludeUser?: string): void {
+    this.sseConnections.forEach((stream, connectionId) => {
+      const user = this.sseConnectionUsers.get(connectionId);
+      if (user !== excludeUser) {
+        this.sendToSSEConnection(connectionId, data);
+      }
+    });
+  }
+
+  private sendToSSEConnection(connectionId: string, data: any): void {
+    const stream = this.sseConnections.get(connectionId);
+    if (stream) {
+      const writer = stream.getWriter();
+      const encoder = new TextEncoder();
+
+      try {
+        writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        writer.releaseLock();
+      } catch (error) {
+        console.error(`SSE: Failed to send to ${connectionId}:`, error);
+        this.cleanupSSEConnection(connectionId);
+      }
+    }
+  }
+
+  private async sendSSEUserList(connectionId: string): Promise<void> {
+    const allUsers = Array.from(new Set([
+      ...Array.from(this.connectionUsers.values()),
+      ...Array.from(this.sseConnectionUsers.values())
+    ]));
+
+    const eventData = {
+      type: 'user_list',
+      data: {
+        users: allUsers,
+        timestamp: Date.now()
+      },
+      timestamp: Date.now()
+    };
+
+    this.sendToSSEConnection(connectionId, eventData);
+  }
+
+  private cleanupSSEConnection(connectionId: string): void {
+    const username = this.sseConnectionUsers.get(connectionId);
+
+    this.sseConnections.delete(connectionId);
+    this.sseConnectionUsers.delete(connectionId);
+
+    if (username) {
+      this.sseUserConnections.delete(username);
+
+      // Update presence if available
+      if (this.presenceManager) {
+        this.presenceManager.updateUserPresence(username, false);
+      }
     }
   }
 }

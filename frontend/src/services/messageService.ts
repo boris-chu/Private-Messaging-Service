@@ -1,4 +1,5 @@
-import { websocketService } from './websocketService';
+// import { websocketService } from './websocketService'; // Commented out for future use
+import { sseService } from './sseService';
 import { cryptoService } from './cryptoService';
 import type { EncryptionState } from '../components/EncryptionStatus';
 
@@ -87,18 +88,18 @@ class MessageService {
     // Initialize encryption
     await this.initializeEncryption();
 
-    // Set up WebSocket listeners with type-safe wrappers
-    websocketService.on('message', this.messageWrapper);
-    websocketService.on('lobby_message', this.lobbyMessageWrapper);
-    websocketService.on('encrypted_message', this.encryptedMessageWrapper);
-    websocketService.on('message_delivered', this.messageDeliveredWrapper);
-    websocketService.on('message_read', this.messageReadWrapper);
-    websocketService.on('user_joined', this.userJoinedWrapper);
-    websocketService.on('user_left', this.userLeftWrapper);
-    websocketService.on('user_list', this.userListWrapper);
-    websocketService.on('connection_status', this.connectionStatusWrapper);
-    websocketService.on('public_key_received', this.publicKeyReceivedWrapper);
-    websocketService.on('public_key_requested', this.publicKeyRequestedWrapper);
+    // Set up SSE listeners with type-safe wrappers
+    sseService.on('message', this.messageWrapper);
+    sseService.on('lobby_message', this.lobbyMessageWrapper);
+    sseService.on('encrypted_message', this.encryptedMessageWrapper);
+    sseService.on('message_delivered', this.messageDeliveredWrapper);
+    sseService.on('message_read', this.messageReadWrapper);
+    sseService.on('user_joined', this.userJoinedWrapper);
+    sseService.on('user_left', this.userLeftWrapper);
+    sseService.on('user_list', this.userListWrapper);
+    sseService.on('connection_status', this.connectionStatusWrapper);
+    sseService.on('public_key_received', this.publicKeyReceivedWrapper);
+    sseService.on('public_key_requested', this.publicKeyRequestedWrapper);
   }
 
   private async initializeEncryption() {
@@ -111,7 +112,7 @@ class MessageService {
       this.updateEncryptionState('exchanging-keys');
       // Send our public key to all users
       const publicKey = await cryptoService.getPublicKeyAsString();
-      websocketService.sendPublicKey(publicKey);
+      await sseService.sendPublicKey(publicKey);
 
       this.updateEncryptionState('partial-encryption');
     } catch (error) {
@@ -130,17 +131,17 @@ class MessageService {
   }
 
   cleanup() {
-    websocketService.off('message', this.messageWrapper);
-    websocketService.off('lobby_message', this.lobbyMessageWrapper);
-    websocketService.off('encrypted_message', this.encryptedMessageWrapper);
-    websocketService.off('message_delivered', this.messageDeliveredWrapper);
-    websocketService.off('message_read', this.messageReadWrapper);
-    websocketService.off('user_joined', this.userJoinedWrapper);
-    websocketService.off('user_left', this.userLeftWrapper);
-    websocketService.off('user_list', this.userListWrapper);
-    websocketService.off('connection_status', this.connectionStatusWrapper);
-    websocketService.off('public_key_received', this.publicKeyReceivedWrapper);
-    websocketService.off('public_key_requested', this.publicKeyRequestedWrapper);
+    sseService.off('message', this.messageWrapper);
+    sseService.off('lobby_message', this.lobbyMessageWrapper);
+    sseService.off('encrypted_message', this.encryptedMessageWrapper);
+    sseService.off('message_delivered', this.messageDeliveredWrapper);
+    sseService.off('message_read', this.messageReadWrapper);
+    sseService.off('user_joined', this.userJoinedWrapper);
+    sseService.off('user_left', this.userLeftWrapper);
+    sseService.off('user_list', this.userListWrapper);
+    sseService.off('connection_status', this.connectionStatusWrapper);
+    sseService.off('public_key_received', this.publicKeyReceivedWrapper);
+    sseService.off('public_key_requested', this.publicKeyRequestedWrapper);
 
     cryptoService.clearKeys();
     this.encryptedUsers.clear();
@@ -268,7 +269,7 @@ class MessageService {
     try {
       // Send our public key to the requesting user
       const publicKey = await cryptoService.getPublicKeyAsString();
-      websocketService.sendPublicKey(publicKey);
+      await sseService.sendPublicKey(publicKey);
       console.log(`📤 Sent public key to ${username}`);
     } catch (error) {
       console.error('Failed to send public key:', error);
@@ -322,17 +323,17 @@ class MessageService {
       // Send encrypted message
       try {
         const encryptedContent = await cryptoService.encryptMessage(content, recipient);
-        websocketService.sendEncryptedMessage(encryptedContent, recipient, messageId);
+        await sseService.sendEncryptedMessage(encryptedContent, recipient, messageId);
         isEncrypted = true;
         console.log(`🔒 Sent encrypted message to ${recipient}`);
       } catch (error) {
         console.error('Encryption failed, sending as plain text:', error);
         // Fall back to plain text
-        this.sendPlainTextMessage(content, recipient, messageId);
+        await this.sendPlainTextMessage(content, recipient, messageId);
       }
     } else {
       // Send plain text message
-      this.sendPlainTextMessage(content, recipient, messageId);
+      await this.sendPlainTextMessage(content, recipient, messageId);
     }
 
     return { messageId, isEncrypted };
@@ -342,67 +343,44 @@ class MessageService {
     const messageId = Date.now().toString();
 
     // Lobby messages are always unencrypted broadcasts
-    websocketService.send({
-      type: 'lobby_message',
-      data: {
-        content,
-        messageId,
-        requireReadReceipt: false // Lobby messages don't require read receipts
-      },
-      timestamp: Date.now()
-    });
+    await sseService.sendLobbyMessage(content);
 
     console.log(`📢 Sent lobby message: ${content}`);
     return { messageId, isEncrypted: false };
   }
 
-  private sendPlainTextMessage(content: string, recipient?: string, messageId?: string) {
+  private async sendPlainTextMessage(content: string, recipient?: string, messageId?: string) {
     const finalMessageId = messageId || Date.now().toString();
-    websocketService.send({
-      type: 'message',
-      data: {
-        content,
-        recipient,
-        messageId: finalMessageId,
-        requireReadReceipt: this.config?.showReadReceipts || false
-      },
-      timestamp: Date.now()
-    });
+    await sseService.sendMessage(content, recipient);
     return finalMessageId;
   }
 
   sendDeliveryConfirmation(messageId: string) {
-    websocketService.send({
-      type: 'message_delivered',
-      data: { messageId },
-      timestamp: Date.now()
-    });
+    // TODO: Implement delivery confirmation with SSE if needed
+    // For now, delivery confirmations are handled automatically by HTTP POST success
+    console.log(`Message ${messageId} delivered`);
   }
 
   sendReadReceipt(messageId: string) {
+    // TODO: Implement read receipts with SSE if needed
     if (!this.config?.showReadReceipts) return;
-
-    websocketService.send({
-      type: 'message_read',
-      data: { messageId },
-      timestamp: Date.now()
-    });
+    console.log(`Message ${messageId} read`);
   }
 
   connect() {
-    return websocketService.connect();
+    return sseService.connect();
   }
 
   disconnect() {
-    websocketService.disconnect();
+    sseService.disconnect();
   }
 
   requestUserList() {
-    websocketService.requestUserList();
+    return sseService.requestUserList();
   }
 
   get isConnected() {
-    return websocketService.isConnected;
+    return sseService.isConnected;
   }
 
   getCurrentEncryptionState(): EncryptionState {
