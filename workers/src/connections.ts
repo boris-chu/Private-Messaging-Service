@@ -15,7 +15,9 @@ export class ConnectionManager {
 
   private getPresenceManager(): PresenceManager {
     if (!this.presenceManager) {
-      this.presenceManager = new PresenceManager(this.state, this.env.SESSIONS);
+      // Handle case where SESSIONS binding might not be available in local dev
+      const sessionsBinding = this.env?.SESSIONS || null;
+      this.presenceManager = new PresenceManager(this.state, sessionsBinding);
     }
     return this.presenceManager;
   }
@@ -46,11 +48,13 @@ export class ConnectionManager {
   }
 
   private async handleWebSocketConnection(request: Request): Promise<Response> {
-    // @ts-ignore - Cloudflare Workers WebSocket handling
-    const webSocket = request.webSocket;
-    if (!webSocket) {
+    const upgradeHeader = request.headers.get('Upgrade');
+    if (upgradeHeader !== 'websocket') {
       return new Response('Expected WebSocket', { status: 400 });
     }
+
+    const webSocketPair = new WebSocketPair();
+    const [client, server] = Object.values(webSocketPair);
 
     // Extract connection metadata
     const userAgent = request.headers.get('User-Agent') || '';
@@ -62,28 +66,27 @@ export class ConnectionManager {
     console.log(`New WebSocket connection: ${connectionId} - IP: ${clientIP}, Mobile: ${isMobile}`);
 
     try {
-      // Accept the WebSocket connection
-      webSocket.accept();
-      console.log(`🟢 BACKEND: WebSocket accepted for connection ${connectionId}`);
+      // Accept the server-side WebSocket connection
+      server.accept();
 
-      // Store connection with metadata
-      this.connections.set(connectionId, webSocket);
+      // Store connection with metadata (using server WebSocket)
+      this.connections.set(connectionId, server);
 
       // Set up event listeners with mobile-specific handling
-      webSocket.addEventListener('message', (event: MessageEvent) => {
+      server.addEventListener('message', (event: MessageEvent) => {
         this.handleMessage(connectionId, event.data).catch(error => {
           console.error(`Error handling message from ${connectionId}:`, error);
         });
       });
 
-      webSocket.addEventListener('close', (event: CloseEvent) => {
+      server.addEventListener('close', (event: CloseEvent) => {
         console.log(`WebSocket ${connectionId} closed: code=${event.code}, reason=${event.reason || 'No reason'}, clean=${event.wasClean}, mobile=${isMobile}`);
         this.handleDisconnection(connectionId).catch(error => {
           console.error(`Error handling disconnection for ${connectionId}:`, error);
         });
       });
 
-      webSocket.addEventListener('error', (error: Event) => {
+      server.addEventListener('error', (error: Event) => {
         console.error(`WebSocket error for ${connectionId} (mobile: ${isMobile}):`, error);
         this.handleDisconnection(connectionId).catch(error => {
           console.error(`Error handling disconnection for ${connectionId}:`, error);
@@ -113,7 +116,11 @@ export class ConnectionManager {
         }, 1000);
       }
 
-      return new Response(null, { status: 101 });
+      // Return the client-side WebSocket to complete the handshake
+      return new Response(null, {
+        status: 101,
+        webSocket: client
+      });
     } catch (error) {
       console.error(`Failed to setup WebSocket ${connectionId}:`, error);
       this.connections.delete(connectionId);
@@ -554,7 +561,7 @@ export class ConnectionManager {
 
   private sendToConnection(connectionId: string, message: any): void {
     const ws = this.connections.get(connectionId);
-    if (ws && ws.readyState === WebSocket.READY_STATE_OPEN) {
+    if (ws && ws.readyState === 1) { // 1 = OPEN state in Cloudflare Workers
       try {
         ws.send(JSON.stringify(message));
       } catch (error) {

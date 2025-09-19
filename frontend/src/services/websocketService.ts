@@ -103,33 +103,30 @@ class WebSocketService {
           this.connectionStatus = 'connected';
           this.reconnectAttempts = 0;
 
-          // Send authentication with username
-          if (this.authToken) {
-            // Get the user data from localStorage
-            const userData = localStorage.getItem('user');
-            let username = 'anonymous';
+          // Send authentication with username (always, regardless of token)
+          const userData = localStorage.getItem('user');
+          let username = 'anonymous';
 
-            if (userData) {
-              try {
-                const user = JSON.parse(userData);
-                username = user.username || user.fullName || 'anonymous';
-              } catch (e) {
-                console.error('Failed to parse user data:', e);
-              }
+          if (userData) {
+            try {
+              const user = JSON.parse(userData);
+              username = user.username || user.fullName || 'anonymous';
+            } catch (e) {
+              console.error('Failed to parse user data:', e);
             }
-
-            // Send auth with both token and username
-            this.send({
-              type: 'auth',
-              data: {
-                token: this.authToken,
-                username: username
-              },
-              timestamp: Date.now()
-            });
-
-            console.log(`Authenticating as: ${username}`);
           }
+
+          // Always send auth message to enable presence tracking
+          this.send({
+            type: 'auth',
+            data: {
+              token: this.authToken,
+              username: username
+            },
+            timestamp: Date.now()
+          });
+
+          console.log(`Authenticating WebSocket as: ${username}`);
 
           this.emit('connection_status', { status: 'connected' });
           resolve();

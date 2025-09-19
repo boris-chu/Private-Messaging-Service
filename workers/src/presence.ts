@@ -23,9 +23,9 @@ export class PresenceManager {
   private state: DurableObjectState;
   private activeConnections: Map<string, PresenceData> = new Map();
   private userPresence: Map<string, UserPresence> = new Map();
-  private sessionManagerBinding: DurableObjectNamespace;
+  private sessionManagerBinding: DurableObjectNamespace | null;
 
-  constructor(state: DurableObjectState, sessionManagerBinding: DurableObjectNamespace) {
+  constructor(state: DurableObjectState, sessionManagerBinding: DurableObjectNamespace | null) {
     this.state = state;
     this.sessionManagerBinding = sessionManagerBinding;
   }
@@ -265,6 +265,12 @@ export class PresenceManager {
 
   private async syncUserToDatabase(username: string, presence: UserPresence): Promise<void> {
     try {
+      // Skip database sync in local development if binding is not available
+      if (!this.sessionManagerBinding) {
+        console.log(`Skipping database sync for ${username} - no SessionManager binding available`);
+        return;
+      }
+
       // Get the SessionManager Durable Object instance
       const sessionId = this.sessionManagerBinding.idFromName('global');
       const sessionManager = this.sessionManagerBinding.get(sessionId);
