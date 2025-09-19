@@ -7,9 +7,11 @@ import { useNavigate } from 'react-router-dom';
 import { Terminal } from '../components/Terminal';
 import { AxolChat } from '../components/AxolChat';
 import { SettingsModal } from '../components/SettingsModal';
-import { WebSocketDebugPanel } from '../components/WebSocketDebugPanel';
+import { SSEDebugPanel } from '../components/SSEDebugPanel';
 import { useTheme } from '../contexts/ThemeContext';
-import { websocketService } from '../services/websocketService';
+// import { websocketService } from '../services/websocketService'; // Commented out for future use
+import { sseService } from '../services/sseService';
+import { messageService } from '../services/messageService';
 import { anonymousSessionManager } from '../utils/anonymousSessionManager';
 import { apiService } from '../services/apiService';
 import { usePresence } from '../hooks/usePresence';
@@ -232,9 +234,9 @@ export const DashboardPage: React.FC = () => {
         onDeleteAccount={handleDeleteAccount}
       />
 
-      {/* WebSocket Debug Panel */}
-      <WebSocketDebugPanel
-        websocketService={websocketService}
+      {/* SSE + HTTP Debug Panel */}
+      <SSEDebugPanel
+        sseService={sseService}
         enabled={debugSettings.websocketDebugEnabled}
         onToggle={() => {}}
       />
