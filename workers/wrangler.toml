@@ -2,6 +2,10 @@ name = "secure-messaging"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
+# Enable observability for better debugging
+[observability.logs]
+enabled = true
+
 [durable_objects]
 bindings = [
   { name = "SESSIONS", class_name = "SessionManager", script_name = "secure-messaging" },

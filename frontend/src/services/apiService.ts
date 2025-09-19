@@ -221,6 +221,70 @@ class APIService {
     return response.json();
   }
 
+  // Recovery management
+  async saveRecoveryData(data: {
+    username: string;
+    recoveryPhrase: string[];
+    recoveryCodes: string[];
+  }) {
+    const response = await this.makeRequest('/recovery/save', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save recovery data');
+    }
+
+    return response.json();
+  }
+
+  async verifyRecoveryPhrase(data: {
+    username: string;
+    recoveryPhrase: string[];
+  }) {
+    const response = await this.makeRequest('/recovery/verify-phrase', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Invalid recovery phrase');
+    }
+
+    return response.json();
+  }
+
+  async verifyRecoveryCode(data: {
+    username: string;
+    recoveryCode: string;
+  }) {
+    const response = await this.makeRequest('/recovery/verify-code', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Invalid recovery code');
+    }
+
+    return response.json();
+  }
+
+  async getRecoveryStatus(username: string) {
+    const response = await this.makeRequest(`/recovery/get?username=${username}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get recovery status');
+    }
+
+    return response.json();
+  }
+
   // WebSocket connection
   createWebSocketConnection(): WebSocket {
     const wsUrl = `${API_BASE_URL.replace('http', 'ws')}/api/${API_VERSION}/ws`;

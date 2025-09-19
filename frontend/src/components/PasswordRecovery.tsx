@@ -21,6 +21,7 @@ import {
   CheckCircle
 } from '@mui/icons-material';
 import { validateRecoveryPhrase, parseRecoveryPhrase } from '../utils/recoveryUtils';
+import { apiService } from '../services/apiService';
 
 interface PasswordRecoveryProps {
   open: boolean;

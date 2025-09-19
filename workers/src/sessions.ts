@@ -21,6 +21,14 @@ export class SessionManager {
         return this.getAllUsers();
       case '/heartbeat':
         return this.handleHeartbeat(request);
+      case '/recovery/save':
+        return this.saveRecoveryData(request);
+      case '/recovery/verify-phrase':
+        return this.verifyRecoveryPhrase(request);
+      case '/recovery/verify-code':
+        return this.verifyRecoveryCode(request);
+      case '/recovery/get':
+        return this.getRecoveryData(request);
       default:
         return new Response('Not found', { status: 404 });
     }
@@ -273,6 +281,229 @@ export class SessionManager {
       });
     }
   }
+
+  private async saveRecoveryData(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    try {
+      const body = await request.json() as {
+        username?: string;
+        recoveryPhrase?: string[];
+        recoveryCodes?: string[];
+      };
+      const { username, recoveryPhrase, recoveryCodes } = body;
+
+      if (!username) {
+        return new Response(JSON.stringify({
+          error: 'Username required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const user = this.users.get(username);
+      if (!user) {
+        return new Response(JSON.stringify({
+          error: 'User not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Update user with recovery data
+      user.recoveryPhrase = recoveryPhrase;
+      user.recoveryCodes = recoveryCodes;
+      user.usedRecoveryCodes = [];
+      await this.saveState();
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Recovery data saved successfully'
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Failed to save recovery data'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  private async verifyRecoveryPhrase(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    try {
+      const body = await request.json() as {
+        username?: string;
+        recoveryPhrase?: string[];
+      };
+      const { username, recoveryPhrase } = body;
+
+      if (!username || !recoveryPhrase) {
+        return new Response(JSON.stringify({
+          error: 'Username and recovery phrase required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const user = this.users.get(username);
+      if (!user) {
+        return new Response(JSON.stringify({
+          error: 'User not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Verify recovery phrase
+      const isValid = user.recoveryPhrase &&
+        user.recoveryPhrase.length === recoveryPhrase.length &&
+        user.recoveryPhrase.every((word, index) => word === recoveryPhrase[index]);
+
+      if (isValid) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Recovery phrase verified'
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } else {
+        return new Response(JSON.stringify({
+          error: 'Invalid recovery phrase'
+        }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Failed to verify recovery phrase'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  private async verifyRecoveryCode(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    try {
+      const body = await request.json() as {
+        username?: string;
+        recoveryCode?: string;
+      };
+      const { username, recoveryCode } = body;
+
+      if (!username || !recoveryCode) {
+        return new Response(JSON.stringify({
+          error: 'Username and recovery code required'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const user = this.users.get(username);
+      if (!user) {
+        return new Response(JSON.stringify({
+          error: 'User not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Check if code has been used
+      if (user.usedRecoveryCodes?.includes(recoveryCode)) {
+        return new Response(JSON.stringify({
+          error: 'Recovery code has already been used'
+        }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Verify recovery code
+      if (user.recoveryCodes?.includes(recoveryCode)) {
+        // Mark code as used
+        if (!user.usedRecoveryCodes) {
+          user.usedRecoveryCodes = [];
+        }
+        user.usedRecoveryCodes.push(recoveryCode);
+        await this.saveState();
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Recovery code verified'
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } else {
+        return new Response(JSON.stringify({
+          error: 'Invalid recovery code'
+        }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: 'Failed to verify recovery code'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  private async getRecoveryData(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const username = url.searchParams.get('username');
+
+    if (!username) {
+      return new Response(JSON.stringify({
+        error: 'Username required'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const user = this.users.get(username);
+    if (!user) {
+      return new Response(JSON.stringify({
+        error: 'User not found'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Return recovery data status (not the actual data for security)
+    return new Response(JSON.stringify({
+      hasRecoveryPhrase: !!user.recoveryPhrase,
+      hasRecoveryCodes: !!user.recoveryCodes,
+      remainingCodes: user.recoveryCodes ?
+        user.recoveryCodes.length - (user.usedRecoveryCodes?.length || 0) : 0
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
 interface UserData {
@@ -287,4 +518,7 @@ interface UserData {
   isAnonymous?: boolean;
   sessionId?: string;
   sessionToken?: string;
+  recoveryPhrase?: string[];
+  recoveryCodes?: string[];
+  usedRecoveryCodes?: string[];
 }

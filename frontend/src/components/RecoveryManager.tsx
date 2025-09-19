@@ -24,6 +24,7 @@ import {
   generateSecureRecoveryCodes,
   createRecoveryBlob
 } from '../utils/recoveryUtils';
+import { apiService } from '../services/apiService';
 
 interface RecoveryManagerProps {
   username: string;
@@ -67,13 +68,27 @@ export const RecoveryManager: React.FC<RecoveryManagerProps> = ({
     const newPhrase = generateSecureRecoveryPhrase(12);
     const newCodes = generateSecureRecoveryCodes(8, 8);
 
+    try {
+      // Save to backend
+      await apiService.saveRecoveryData({
+        username,
+        recoveryPhrase: newPhrase,
+        recoveryCodes: newCodes
+      });
+
+      console.log('Recovery data saved successfully to backend');
+    } catch (error) {
+      console.error('Failed to save recovery data to backend:', error);
+      // Continue anyway - recovery keys are still useful even if not saved to backend
+    }
+
     setRecoveryPhrase(newPhrase);
     setRecoveryCodes(newCodes);
     setHasGenerated(true);
     setShowPhrase(true);
     setShowCodes(true);
 
-    // Store in localStorage
+    // Store in localStorage for session
     localStorage.setItem('recovery-phrase', JSON.stringify(newPhrase));
     localStorage.setItem('recovery-codes', JSON.stringify(newCodes));
 

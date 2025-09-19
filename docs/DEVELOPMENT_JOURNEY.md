@@ -139,9 +139,28 @@ Development of a secure, end-to-end encrypted messaging platform with a unique t
 - ✅ **WebSocket Stability:** Fixed mobile connection issues
 - ✅ **Comprehensive Debugging:** Advanced diagnostic tools built-in
 
+## Recent Updates (2025-09-19)
+
+### Recovery Keys System
+- **Integrated Recovery Keys:** Full backend storage for 12-word recovery phrases and 8-character backup codes
+- **Registration Flow Enhanced:** Two-step registration with automatic recovery key generation
+- **Backend Storage:** Recovery data now stored in Durable Objects (SessionManager)
+- **API Endpoints Added:**
+  - `/recovery/save` - Store recovery keys for a user
+  - `/recovery/verify-phrase` - Verify recovery phrase for account recovery
+  - `/recovery/verify-code` - Verify single-use recovery code
+  - `/recovery/get` - Check recovery status for a user
+- **Security:** Recovery codes are single-use and tracked to prevent reuse
+
+### Authentication Fixes
+- **Login Authentication:** Fixed password verification against SessionManager
+- **WebSocket Routing:** Fixed paths from `/api/v1/ws` to `/ws`
+- **Header Detection:** Enhanced WebSocket upgrade detection for Cloudflare
+
 ## Known Issues & Workarounds
 - **Safari Private Relay:** Blocks WebSocket connections - use Chrome or disable Private Relay
 - **Mobile Safari:** Connection issues with Private Relay enabled
+- **Password Storage:** Currently stored as plain text (TODO: implement hashing)
 
 ## Next Steps
 1. **Safari Compatibility:** Investigate Private Relay WebSocket workarounds

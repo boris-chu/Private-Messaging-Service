@@ -113,6 +113,16 @@ async function handleAPIv1(request: Request, env: Env, url: URL): Promise<Respon
     case path === '/users':
       return handleUsersList(request, env);
 
+    // Recovery endpoints
+    case path === '/recovery/save':
+      return handleRecoverySave(request, env);
+    case path === '/recovery/verify-phrase':
+      return handleRecoveryVerifyPhrase(request, env);
+    case path === '/recovery/verify-code':
+      return handleRecoveryVerifyCode(request, env);
+    case path === '/recovery/get':
+      return handleRecoveryGet(request, env);
+
     // WebSocket endpoint
     case path === '/ws':
       if (request.headers.get('Upgrade') === 'websocket') {
@@ -497,6 +507,48 @@ async function handleConnectionsAPI(request: Request, env: Env): Promise<Respons
       'Content-Type': 'application/json',
     },
   });
+}
+
+// Recovery Handlers
+async function handleRecoverySave(request: Request, env: Env): Promise<Response> {
+  const sessionId = env.SESSIONS.idFromName('global');
+  const sessionObject = env.SESSIONS.get(sessionId);
+
+  return sessionObject.fetch('http://session/recovery/save', {
+    method: request.method,
+    headers: request.headers,
+    body: request.body
+  });
+}
+
+async function handleRecoveryVerifyPhrase(request: Request, env: Env): Promise<Response> {
+  const sessionId = env.SESSIONS.idFromName('global');
+  const sessionObject = env.SESSIONS.get(sessionId);
+
+  return sessionObject.fetch('http://session/recovery/verify-phrase', {
+    method: request.method,
+    headers: request.headers,
+    body: request.body
+  });
+}
+
+async function handleRecoveryVerifyCode(request: Request, env: Env): Promise<Response> {
+  const sessionId = env.SESSIONS.idFromName('global');
+  const sessionObject = env.SESSIONS.get(sessionId);
+
+  return sessionObject.fetch('http://session/recovery/verify-code', {
+    method: request.method,
+    headers: request.headers,
+    body: request.body
+  });
+}
+
+async function handleRecoveryGet(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const sessionId = env.SESSIONS.idFromName('global');
+  const sessionObject = env.SESSIONS.get(sessionId);
+
+  return sessionObject.fetch(`http://session/recovery/get${url.search}`);
 }
 
 async function handleAnonymousLogin(request: Request, env: Env): Promise<Response> {
