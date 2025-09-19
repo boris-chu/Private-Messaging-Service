@@ -66,9 +66,6 @@ export class ConnectionManager {
     console.log(`New WebSocket connection: ${connectionId} - IP: ${clientIP}, Mobile: ${isMobile}`);
 
     try {
-      // Accept the server-side WebSocket connection
-      server.accept();
-
       // Store connection with metadata (using server WebSocket)
       this.connections.set(connectionId, server);
 
@@ -93,6 +90,9 @@ export class ConnectionManager {
         });
       });
 
+      // Accept the server-side WebSocket connection AFTER setting up event listeners
+      server.accept();
+
       // Send welcome message with connection info
       this.sendToConnection(connectionId, {
         type: 'connection_status',
@@ -104,7 +104,7 @@ export class ConnectionManager {
         }
       });
 
-      // For mobile connections, send a ping immediately to test stability
+      // For mobile connections, send a ping to test stability
       if (isMobile) {
         setTimeout(() => {
           if (this.connections.has(connectionId)) {
