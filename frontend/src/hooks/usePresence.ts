@@ -16,6 +16,7 @@ interface UsePresenceReturn {
   error: string | null;
   lastUpdate: number | null;
   sendHeartbeat: () => Promise<void>;
+  logoutPresence: () => Promise<void>;
 }
 
 export function usePresence({
@@ -31,7 +32,7 @@ export function usePresence({
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const isEnabledRef = useRef(enabled);
 
   const sendHeartbeat = useCallback(async () => {
