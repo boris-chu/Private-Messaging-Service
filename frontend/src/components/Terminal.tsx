@@ -272,7 +272,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           if (!messageService.isConnected) {
             terminal.writeln('\x1b[33m[INIT]\x1b[0m Initializing secure connection protocol...');
             terminal.writeln('\x1b[36m[WEBSOCKET]\x1b[0m Creating WebSocket connection...');
-            terminal.writeln(`\x1b[90m[TARGET]\x1b[0m ${import.meta.env.VITE_WS_URL || 'wss://api.axolchat.cc'}/ws`);
+            terminal.writeln('\x1b[90m[TARGET]\x1b[0m Secure endpoint');
 
             messageService.connect()
               .then(() => {
@@ -373,7 +373,7 @@ export const Terminal: React.FC<TerminalProps> = ({
           // WebSocket info
           terminal.writeln('\x1b[1;36mConnection:\x1b[0m');
           terminal.writeln(`  Connection Status: ${messageService.isConnected ? 'Connected' : 'Disconnected'}`);
-          terminal.writeln(`  WebSocket URL: ${import.meta.env.VITE_WS_URL || 'wss://api.axolchat.cc'}`);
+          terminal.writeln('  WebSocket URL: [Secure Connection]');
 
           // Try to get more WebSocket details
           try {
